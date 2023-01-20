@@ -38,8 +38,7 @@ pub enum Output {
 
 /// Get the type of an output at `index`.
 pub fn output_type(index: u64) -> Output {
-    let type = __gtf::<u8>(index, GTF_OUTPUT_TYPE);
-    match type {
+    match __gtf::<u8>(index, GTF_OUTPUT_TYPE) {
         0u8 => Output::Coin,
         1u8 => Output::Contract,
         2u8 => Output::Message,
@@ -52,8 +51,7 @@ pub fn output_type(index: u64) -> Output {
 /// Get a pointer to the Ouput at `index`
 /// for either tx type (transaction-script or transaction-create).
 pub fn output_pointer(index: u64) -> u64 {
-    let type = tx_type();
-    match type {
+    match tx_type() {
         Transaction::Script => __gtf::<u64>(index, GTF_SCRIPT_OUTPUT_AT_INDEX),
         Transaction::Create => __gtf::<u64>(index, GTF_CREATE_OUTPUT_AT_INDEX),
     }
@@ -62,8 +60,7 @@ pub fn output_pointer(index: u64) -> u64 {
 /// Get the transaction outputs count for either tx type
 /// (transaction-script or transaction-create).
 pub fn output_count() -> u64 {
-    let type = tx_type();
-    match type {
+    match tx_type() {
         Transaction::Script => __gtf::<u64>(0, GTF_SCRIPT_OUTPUTS_COUNT),
         Transaction::Create => __gtf::<u64>(0, GTF_CREATE_OUTPUTS_COUNT),
     }
@@ -73,8 +70,7 @@ pub fn output_count() -> u64 {
 /// This method is only meaningful if the output type has the `amount` field.
 /// Specifically: OutputCoin, OutputMessage, OutputChange, OutputVariable.
 pub fn output_amount(index: u64) -> u64 {
-    let type = output_type(index);
-    match type {
+    match output_type(index) {
         Output::Coin => __gtf::<u64>(index, GTF_OUTPUT_COIN_AMOUNT),
         Output::Contract => revert(0),
         Output::Message => __gtf::<u64>(index, GTF_OUTPUT_MESSAGE_AMOUNT),

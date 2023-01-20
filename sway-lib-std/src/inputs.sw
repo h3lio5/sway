@@ -143,9 +143,20 @@ pub fn input_predicate_data_pointer(index: u64) -> Option<raw_ptr> {
 /// Get the predicate data from the input at `index`.
 /// If the input's type is `InputCoin` or `InputMessage`,
 /// return the data, otherwise reverts.
-pub fn input_predicate_data<T>(index: u64) -> T {
+pub fn input_predicate_data(index: u64) -> Bytes {
+    let wrapped = input_predicate_data_length(index);
+    if wrapped.is_none() {
+        revert(0);
+    };
+    let length = wrapped.unwrap();
+    let mut data_bytes = Bytes::with_capacity(length);
+
     match input_predicate_data_pointer(index) {
-        Option::Some(d) => d.read::<T>(),
+        Option::Some(d) => {
+            data_bytes.len = length;
+            d.copy_bytes_to(data_bytes.buf.ptr, length);
+            data_bytes
+        },
         Option::None => revert(0),
     }
 }

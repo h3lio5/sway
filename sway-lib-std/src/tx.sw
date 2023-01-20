@@ -1,7 +1,9 @@
 //! Transaction field getters.
 library tx;
 
+use ::bytes::Bytes;
 use ::constants::ZERO_B256;
+use ::option::Option;
 use ::revert::revert;
 
 ////////////////////////////////////////
@@ -121,12 +123,22 @@ pub fn tx_witness_pointer(index: u64) -> u64 {
 
 // Get the length of the witness data at `index`
 pub fn tx_witness_data_length(index: u64) -> u64 {
-    __gtf::<u64>(index, GTF_WITNESS_DATA_LENGTH)
+    match tx_type() {
+        Transaction::Script => __gtf::<u64>(index, GTF_WITNESS_DATA_LENGTH),
+        Transaction::Create => __gtf::<u64>(index, GTF_WITNESS_DATA_LENGTH),
+    }
 }
 
 // Get the witness data at `index`.
-pub fn tx_witness_data<T>(index: u64) -> T {
-    __gtf::<raw_ptr>(index, GTF_WITNESS_DATA).read::<T>()
+pub fn tx_witness_data(index: u64) -> Bytes {
+    // TODO: use Bytes.from_raw_slice after https://github.com/FuelLabs/sway/issues/3844 is resolved. review files tx.sw, inputs.sw, & outputs.sw for other places the same refactor can be made.
+    let pointer = __gtf::<raw_ptr>(index, GTF_WITNESS_DATA);
+    let length = tx_witness_data_length(index);
+
+    let mut data_bytes = Bytes::with_capacity(length);
+    data_bytes.len = length;
+    pointer.copy_bytes_to(data_bytes.buf.ptr, length);
+    data_bytes
 }
 
 /// Get the transaction receipts root.
@@ -160,18 +172,26 @@ pub fn tx_script_data_start_pointer() -> raw_ptr {
     }
 }
 
-/// Get the script data, typed. Unsafe.
-pub fn tx_script_data<T>() -> T {
-    let ptr = tx_script_data_start_pointer();
-    // TODO some safety checks on the input data? We are going to assume it is the right type for now.
-    ptr.read::<T>()
+/// Get the script data
+pub fn tx_script_data() -> Bytes {
+    let pointer = tx_script_data_start_pointer();
+    let length = tx_script_data_length();
+
+    let mut data_bytes = Bytes::with_capacity(length);
+    data_bytes.len = length;
+    pointer.copy_bytes_to(data_bytes.buf.ptr, length);
+    data_bytes
 }
 
 /// Get the script bytecode
-/// Must be cast to a u64 array, with sufficient length to contain the bytecode.
-/// Bytecode will be padded to next whole word.
-pub fn tx_script_bytecode<T>() -> T {
-    tx_script_start_pointer().read::<T>()
+pub fn tx_script_bytecode() -> Bytes {
+    let pointer = tx_script_start_pointer();
+    let length = tx_script_length();
+
+    let mut data_bytes = Bytes::with_capacity(length);
+    data_bytes.len = length;
+    pointer.copy_bytes_to(data_bytes.buf.ptr, length);
+    data_bytes
 }
 
 /// Get the hash of the script bytecode.
@@ -195,7 +215,6 @@ pub fn tx_script_bytecode_hash() -> b256 {
 }
 
 const TX_ID_OFFSET = 0;
-
 /// Get the id of the current transaction.
 pub fn tx_id() -> b256 {
     asm(ptr: TX_ID_OFFSET) { ptr: raw_ptr }.read()
