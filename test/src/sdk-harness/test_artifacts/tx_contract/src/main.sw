@@ -3,6 +3,7 @@ contract;
 use std::{
     b512::B512,
     bytes::Bytes,
+    constants::ZERO_B256,
     inputs::*,
     outputs::{
         Output,
@@ -31,6 +32,7 @@ abi TxContractTest {
     fn get_tx_script_start_pointer() -> u64;
     fn get_tx_script_data_start_pointer() -> u64;
     fn get_tx_id() -> b256;
+    fn get_tx_script_bytecode(expected: Vec<u8>) -> bool;
     fn get_tx_script_bytecode_hash() -> b256;
 
     fn get_input_type(index: u64) -> Input;
@@ -89,7 +91,16 @@ impl TxContractTest for Contract {
         tx_witness_data_length(index)
     }
     fn get_tx_witness_data(index: u64) -> B512 {
-        tx_witness_data(index)
+        let data = tx_witness_data(index);
+        let mut first: b256 = ZERO_B256;
+        let mut second: b256 = ZERO_B256;
+        data.buf.ptr.copy_bytes_to(__addr_of(first), 32);
+        let offset = data.buf.ptr.add_uint_offset(32);
+
+        offset.copy_bytes_to(__addr_of(second), 32);
+        B512 {
+            bytes: [first, second],
+        }
     }
     fn get_tx_receipts_root() -> b256 {
         tx_receipts_root()
@@ -102,6 +113,10 @@ impl TxContractTest for Contract {
     }
     fn get_tx_id() -> b256 {
         tx_id()
+    }
+    fn get_tx_script_bytecode(expected: Vec<u8>) -> bool {
+        let mut vector = expected;
+        tx_script_bytecode() == Bytes::from_vec_u8(vector)
     }
     fn get_tx_script_bytecode_hash() -> b256 {
         tx_script_bytecode_hash()

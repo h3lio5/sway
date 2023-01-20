@@ -369,6 +369,29 @@ mod tx {
     }
 
     #[tokio::test]
+    async fn can_get_script_bytecode() {
+        let (contract_instance, _, _, _) = get_contracts().await;
+
+        let tx = contract_instance
+            .methods()
+            .get_tx_script_bytecode(vec![])
+            .get_executable_call()
+            .await
+            .unwrap()
+            .tx;
+
+        let script = tx.script();
+
+        let result = contract_instance
+            .methods()
+            .get_tx_script_bytecode(script.to_vec())
+            .call()
+            .await
+            .unwrap();
+        assert_eq!(result.value, true);
+    }
+
+    #[tokio::test]
     async fn can_get_script_bytecode_hash() {
         let (contract_instance, _, _, _) = get_contracts().await;
 
