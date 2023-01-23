@@ -31,6 +31,7 @@ abi TxContractTest {
     fn get_tx_receipts_root() -> b256;
     fn get_tx_script_start_pointer() -> u64;
     fn get_tx_script_data_start_pointer() -> u64;
+    fn get_tx_script_data(expected: Vec<u8>) -> bool;
     fn get_tx_id() -> b256;
     fn get_tx_script_bytecode(expected: Vec<u8>) -> bool;
     fn get_tx_script_bytecode_hash() -> b256;
@@ -39,6 +40,10 @@ abi TxContractTest {
     fn get_tx_input_pointer(index: u64) -> u64;
     fn get_input_owner(index: u64) -> Address;
     fn get_input_amount(index: u64) -> u64;
+    fn get_input_predicate(index: u64, bytecode: Vec<u8>) -> bool;
+    fn get_input_predicate_length(index: u64) -> u16;
+    fn get_input_predicate_data(index: u64, expected: Vec<u8>) -> bool;
+    fn get_input_predicate_data_length(index: u64) -> u16;
     fn get_tx_input_predicate_data_pointer(index: u64) -> u64;
     fn get_input_message_msg_id(index: u64) -> b256;
     fn get_input_message_sender(index: u64) -> Address;
@@ -46,10 +51,7 @@ abi TxContractTest {
     fn get_input_message_nonce(index: u64) -> u64;
     fn get_input_witness_index(index: u64) -> u8;
     fn get_input_message_data_length(index: u64) -> u16;
-    fn get_input_predicate_length(index: u64) -> u16;
-    fn get_input_predicate_data_length(index: u64) -> u16;
     fn get_input_message_data(index: u64, offset: u64, expected: [u8; 3]) -> bool;
-    fn get_input_predicate(index: u64, bytecode: Vec<u8>) -> bool;
 
     fn get_tx_output_pointer(index: u64) -> u64;
     fn get_output_type(ptr: u64) -> Output;
@@ -111,6 +113,10 @@ impl TxContractTest for Contract {
     fn get_tx_script_data_start_pointer() -> u64 {
         asm(r1: tx_script_data_start_pointer()) { r1: u64 }
     }
+    fn get_tx_script_data(expected: Vec<u8>) -> bool {
+        let mut vector = expected;
+        tx_script_data() == Bytes::from_vec_u8(vector)
+    }
     fn get_tx_id() -> b256 {
         tx_id()
     }
@@ -133,6 +139,26 @@ impl TxContractTest for Contract {
     fn get_input_amount(index: u64) -> u64 {
         input_amount(index).unwrap()
     }
+    fn get_input_predicate(index: u64, bytecode: Vec<u8>) -> bool {
+        let code = input_predicate(index);
+        assert(input_predicate_length(index).unwrap() == bytecode.len());
+        let mut i = 0;
+        while i < bytecode.len() {
+            assert(bytecode.get(i).unwrap() == code.get(i).unwrap());
+            i += 1;
+        }
+        true
+    }
+    fn get_input_predicate_length(index: u64) -> u16 {
+        input_predicate_length(index).unwrap()
+    }
+    fn get_input_predicate_data(index: u64, expected: Vec<u8>) -> bool {
+        let mut vector = expected;
+        input_predicate_data(index) == Bytes::from_vec_u8(vector)
+    }
+    fn get_input_predicate_data_length(index: u64) -> u16 {
+        input_predicate_data_length(index).unwrap()
+    }
     fn get_tx_input_predicate_data_pointer(index: u64) -> u64 {
         asm(r1: input_predicate_data_pointer(index).unwrap()) { r1: u64 }
     }
@@ -154,12 +180,6 @@ impl TxContractTest for Contract {
     fn get_input_message_data_length(index: u64) -> u16 {
         input_message_data_length(index)
     }
-    fn get_input_predicate_length(index: u64) -> u16 {
-        input_predicate_length(index).unwrap()
-    }
-    fn get_input_predicate_data_length(index: u64) -> u16 {
-        input_predicate_data_length(index).unwrap()
-    }
     fn get_input_message_data(index: u64, offset: u64, expected: [u8; 3]) -> bool {
         let data = input_message_data(index, offset);
 
@@ -169,17 +189,6 @@ impl TxContractTest for Contract {
         expected_data_bytes.push(expected[1]);
         expected_data_bytes.push(expected[2]);
         (data.get(0).unwrap() == expected_data_bytes.get(0).unwrap()) && (data.get(1).unwrap() == expected_data_bytes.get(1).unwrap()) && (data.get(2).unwrap() == expected_data_bytes.get(2).unwrap())
-    }
-
-    fn get_input_predicate(index: u64, bytecode: Vec<u8>) -> bool {
-        let code = input_predicate(index);
-        assert(input_predicate_length(index).unwrap() == bytecode.len());
-        let mut i = 0;
-        while i < bytecode.len() {
-            assert(bytecode.get(i).unwrap() == code.get(i).unwrap());
-            i += 1;
-        }
-        true
     }
     fn get_tx_output_pointer(index: u64) -> u64 {
         output_pointer(index)

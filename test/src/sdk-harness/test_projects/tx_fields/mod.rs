@@ -447,6 +447,32 @@ mod tx {
             .unwrap();
         assert_eq!(result.value, 10376)
     }
+
+    #[tokio::test]
+    async fn can_get_get_tx_script_data() {
+        let (contract_instance, _, _, _) = get_contracts().await;
+
+        let tx = contract_instance
+            .methods()
+            .get_tx_script_data(vec![])
+            .get_executable_call()
+            .await
+            .unwrap()
+            .tx;
+
+        let script = tx.script();
+        println!("script: {:#?}", script);
+        // println!("script: {:#?}", script.data());
+
+        let result = contract_instance
+            .methods()
+            .get_tx_script_data(vec![])
+            .call()
+            .await
+            .unwrap();
+        println!("result: {:#?}", result);
+        assert_eq!(result.value, true)
+    }
 }
 
 mod inputs {
@@ -665,6 +691,25 @@ mod inputs {
                     .unwrap();
 
                 assert_eq!(receipts[1].val().unwrap(), predicate_bytecode.len() as u64);
+            }
+
+            #[tokio::test]
+            async fn can_get_input_message_predicate_data() {
+                let predicate_data = vec![];
+                let (contract_instance, _, wallet, _) = get_contracts().await;
+                let (_, _, predicate_message) =
+                    generate_predicate_inputs(100, predicate_data.clone(), &wallet).await;
+                let handler = contract_instance
+                    .methods()
+                    .get_input_predicate_data(1, vec![]);
+                let mut executable = handler.get_executable_call().await.unwrap();
+                executable.tx.inputs_mut().push(predicate_message);
+
+                let receipts = executable
+                    .execute(&wallet.get_provider().unwrap())
+                    .await
+                    .unwrap();
+                assert_eq!(receipts[1].val().unwrap(), predicate_data.len() as u64);
             }
 
             #[tokio::test]
