@@ -4,7 +4,7 @@ use crate::{
     TypeEngine,
 };
 
-use super::types::{create_enum_aggregate, create_tuple_aggregate};
+use super::types::{create_enum_type, create_tuple_aggregate};
 
 use sway_error::error::CompileError;
 use sway_ir::{Constant, Context, Type, Value};
@@ -97,7 +97,7 @@ fn convert_resolved_type(
         TypeInfo::Boolean => Type::get_bool(context),
         TypeInfo::B256 => Type::get_b256(context),
         TypeInfo::Str(n) => Type::new_string(context, n.val() as u64),
-        TypeInfo::Struct { fields, .. } => super::types::get_aggregate_for_types(
+        TypeInfo::Struct { fields, .. } => super::types::get_struct_for_types(
             type_engine,
             context,
             fields
@@ -107,7 +107,7 @@ fn convert_resolved_type(
                 .as_slice(),
         )?,
         TypeInfo::Enum { variant_types, .. } => {
-            create_enum_aggregate(type_engine, context, variant_types)?
+            create_enum_type(type_engine, context, variant_types)?
         }
         TypeInfo::Array(elem_type, length) => {
             let elem_type =

@@ -611,7 +611,10 @@ impl<'ir> FuelAsmBuilder<'ir> {
             } else {
                 let ptr_ty = ptr.get_type(self.context);
                 match ptr_ty.get_content(self.context) {
-                    TypeContent::Unit | TypeContent::Bool | TypeContent::Uint(_) => {
+                    TypeContent::Unit
+                    | TypeContent::Bool
+                    | TypeContent::Uint(_)
+                    | TypeContent::Pointer(_) => {
                         self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
                         stack_base += 1;
                     }

@@ -49,9 +49,11 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
             let asm_checks_begin_offs = input.find("::check-asm::");
 
             let mut optimisation_inline = false;
+            let mut target_fuelvm = false;
 
             if let Some(first_line) = input.lines().next() {
-                optimisation_inline = first_line.contains("optimisation-inline")
+                optimisation_inline = first_line.contains("optimisation-inline");
+                target_fuelvm = first_line.contains("target-fuelvm");
             }
 
             let ir_checks_end_offs = match asm_checks_begin_offs {
@@ -107,10 +109,11 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                 ir_checker,
                 asm_checker,
                 optimisation_inline,
+                target_fuelvm,
             )
         })
         .for_each(
-            |(path, sway_str, ir_checker, opt_asm_checker, optimisation_inline)| {
+            |(path, sway_str, ir_checker, opt_asm_checker, optimisation_inline, target_fuelvm)| {
                 let test_file_name = path.file_name().unwrap().to_string_lossy().to_string();
                 tracing::info!("Testing {} ...", test_file_name.bold());
 
@@ -152,7 +155,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
 
                 // Compile to IR.
                 let include_tests = true;
-                let mut ir = compile_program(&typed_program, include_tests, engines)
+                let mut ir = compile_program(&typed_program, include_tests, target_fuelvm, engines)
                     .unwrap_or_else(|e| {
                         panic!("Failed to compile test {}:\n{e}", path.display());
                     })
@@ -160,6 +163,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                     .unwrap_or_else(|err| {
                         panic!("IR verification failed for test {}:\n{err}", path.display());
                     });
+
                 let ir_output = sway_ir::printer::to_string(&ir);
 
                 if ir_checker.is_none() {
@@ -248,7 +252,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
 
                 // Parse the IR again, and print it yet again to make sure that IR de/serialisation works.
                 let parsed_ir = sway_ir::parser::parse(&ir_output)
-                    .unwrap_or_else(|e| panic!("{}: {}", path.display(), e));
+                    .unwrap_or_else(|e| panic!("{}: {e}\n{ir_output}", path.display()));
                 let parsed_ir_output = sway_ir::printer::to_string(&parsed_ir);
                 if ir_output != parsed_ir_output {
                     tracing::error!("{}", prettydiff::diff_lines(&ir_output, &parsed_ir_output));

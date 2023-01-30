@@ -1,9 +1,7 @@
 use crate::{
     asm_generation::{
         asm_builder::{AsmBuilder, AsmBuilderResult},
-        from_ir::{
-            aggregate_idcs_to_field_layout, ir_type_size_in_bytes, StateAccessType, Storage,
-        },
+        from_ir::{ir_type_size_in_bytes, StateAccessType, Storage},
         fuel::{
             abstract_instruction_set::AbstractInstructionSet,
             compiler_constants,
@@ -157,203 +155,146 @@ impl<'ir> FuelAsmBuilder<'ir> {
         instr_val: &Value,
         func_is_entry: bool,
     ) -> CompileResult<()> {
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
-        if let Some(instruction) = instr_val.get_instruction(self.context) {
+        let Some(instruction) = instr_val.get_instruction(self.context) else {
+            return err(vec![], vec![CompileError::Internal(
+                "Value not an instruction.",
+                self.md_mgr
+                    .val_to_span(self.context, *instr_val)
+                    .unwrap_or_else(Self::empty_span),
+            )]);
+        };
+
+        // The only instruction whose compilation returns a CompileResult itself is AsmBlock, which
+        // we special-case here.  Ideally, the ASM block verification would happen much sooner,
+        // perhaps during parsing.  https://github.com/FuelLabs/sway/issues/801
+        if let Instruction::AsmBlock(asm, args) = instruction {
+            self.compile_asm_block(instr_val, asm, args)
+        } else {
+            // These matches all return `Result<(), CompileError>`.  Most actually just return `()`
+            // and are wrapped with `Ok(..)`.
             match instruction {
-                Instruction::AddrOf(arg) => self.compile_addr_of(instr_val, arg),
-                Instruction::AsmBlock(asm, args) => {
-                    check!(
-                        self.compile_asm_block(instr_val, asm, args),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    )
-                }
-                Instruction::BitCast(val, ty) => self.compile_bitcast(instr_val, val, ty),
+                Instruction::AsmBlock(..) => unreachable!("Handled immediately above."),
+                Instruction::BitCast(val, ty) => Ok(self.compile_bitcast(instr_val, val, ty)),
                 Instruction::BinaryOp { op, arg1, arg2 } => {
-                    self.compile_binary_op(instr_val, op, arg1, arg2)
+                    Ok(self.compile_binary_op(instr_val, op, arg1, arg2))
                 }
-                Instruction::Branch(to_block) => self.compile_branch(to_block),
-                Instruction::Call(func, args) => self.compile_call(instr_val, func, args),
-                Instruction::CastPtr(val, ty, offs) => {
-                    self.compile_cast_ptr(instr_val, val, ty, *offs)
-                }
+                Instruction::Branch(to_block) => Ok(self.compile_branch(to_block)),
+                Instruction::Call(func, args) => Ok(self.compile_call(instr_val, func, args)),
+                Instruction::CastPtr(val, ty) => Ok(self.compile_cast_ptr(instr_val, val, ty)),
                 Instruction::Cmp(pred, lhs_value, rhs_value) => {
-                    self.compile_cmp(instr_val, pred, lhs_value, rhs_value)
+                    Ok(self.compile_cmp(instr_val, pred, lhs_value, rhs_value))
                 }
                 Instruction::ConditionalBranch {
                     cond_value,
                     true_block,
                     false_block,
-                } => check!(
-                    self.compile_conditional_branch(cond_value, true_block, false_block),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ),
+                } => self.compile_conditional_branch(cond_value, true_block, false_block),
                 Instruction::ContractCall {
                     params,
                     coins,
                     asset_id,
                     gas,
                     ..
-                } => self.compile_contract_call(instr_val, params, coins, asset_id, gas),
-                Instruction::ExtractElement {
-                    array,
-                    ty,
-                    index_val,
-                } => self.compile_extract_element(instr_val, array, ty, index_val),
-                Instruction::ExtractValue {
-                    aggregate, indices, ..
-                } => self.compile_extract_value(instr_val, aggregate, indices),
+                } => Ok(self.compile_contract_call(instr_val, params, coins, asset_id, gas)),
                 Instruction::FuelVm(fuel_vm_instr) => match fuel_vm_instr {
-                    FuelVmInstruction::GetStorageKey => {
-                        check!(
-                            self.compile_get_storage_key(instr_val),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        )
-                    }
+                    FuelVmInstruction::GetStorageKey => self.compile_get_storage_key(instr_val),
                     FuelVmInstruction::Gtf { index, tx_field_id } => {
-                        self.compile_gtf(instr_val, index, *tx_field_id)
+                        Ok(self.compile_gtf(instr_val, index, *tx_field_id))
                     }
                     FuelVmInstruction::Log {
                         log_val,
                         log_ty,
                         log_id,
-                    } => self.compile_log(instr_val, log_val, log_ty, log_id),
+                    } => Ok(self.compile_log(instr_val, log_val, log_ty, log_id)),
                     FuelVmInstruction::ReadRegister(reg) => {
-                        self.compile_read_register(instr_val, reg)
+                        Ok(self.compile_read_register(instr_val, reg))
                     }
                     FuelVmInstruction::Revert(revert_val) => {
-                        self.compile_revert(instr_val, revert_val)
+                        Ok(self.compile_revert(instr_val, revert_val))
                     }
                     FuelVmInstruction::Smo {
                         recipient_and_message,
                         message_size,
                         output_index,
                         coins,
-                    } => self.compile_smo(
+                    } => Ok(self.compile_smo(
                         instr_val,
                         recipient_and_message,
                         message_size,
                         output_index,
                         coins,
-                    ),
+                    )),
                     FuelVmInstruction::StateClear {
                         key,
                         number_of_slots,
-                    } => check!(
-                        self.compile_state_clear(instr_val, key, number_of_slots,),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ),
+                    } => self.compile_state_clear(instr_val, key, number_of_slots),
                     FuelVmInstruction::StateLoadQuadWord {
                         load_val,
                         key,
                         number_of_slots,
-                    } => check!(
-                        self.compile_state_access_quad_word(
-                            instr_val,
-                            load_val,
-                            key,
-                            number_of_slots,
-                            StateAccessType::Read
-                        ),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
+                    } => self.compile_state_access_quad_word(
+                        instr_val,
+                        load_val,
+                        key,
+                        number_of_slots,
+                        StateAccessType::Read,
                     ),
-                    FuelVmInstruction::StateLoadWord(key) => check!(
-                        self.compile_state_load_word(instr_val, key),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ),
+                    FuelVmInstruction::StateLoadWord(key) => {
+                        self.compile_state_load_word(instr_val, key)
+                    }
                     FuelVmInstruction::StateStoreQuadWord {
                         stored_val,
                         key,
                         number_of_slots,
-                    } => check!(
-                        self.compile_state_access_quad_word(
-                            instr_val,
-                            stored_val,
-                            key,
-                            number_of_slots,
-                            StateAccessType::Write
-                        ),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
+                    } => self.compile_state_access_quad_word(
+                        instr_val,
+                        stored_val,
+                        key,
+                        number_of_slots,
+                        StateAccessType::Write,
                     ),
-                    FuelVmInstruction::StateStoreWord { stored_val, key } => check!(
-                        self.compile_state_store_word(instr_val, stored_val, key),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ),
-                },
-                Instruction::GetLocal(local_var) => self.compile_get_local(instr_val, local_var),
-                Instruction::InsertElement {
-                    array,
-                    ty,
-                    value,
-                    index_val,
-                } => self.compile_insert_element(instr_val, array, ty, value, index_val),
-                Instruction::InsertValue {
-                    aggregate,
-                    value,
-                    indices,
-                    ..
-                } => self.compile_insert_value(instr_val, aggregate, value, indices),
-                Instruction::IntToPtr(val, _) => self.compile_int_to_ptr(instr_val, val),
-                Instruction::Load(src_val) => check!(
-                    self.compile_load(instr_val, src_val),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ),
-                Instruction::MemCopy {
-                    dst_val,
-                    src_val,
-                    byte_len,
-                } => self.compile_mem_copy(instr_val, dst_val, src_val, *byte_len),
-                Instruction::Nop => (),
-                Instruction::Ret(ret_val, ty) => {
-                    if func_is_entry {
-                        self.compile_ret_from_entry(instr_val, ret_val, ty)
-                    } else {
-                        self.compile_ret_from_call(instr_val, ret_val)
+                    FuelVmInstruction::StateStoreWord { stored_val, key } => {
+                        self.compile_state_store_word(instr_val, stored_val, key)
                     }
+                },
+                Instruction::GetElemPtr {
+                    base,
+                    elem_ptr_ty,
+                    indices,
+                } => self.compile_get_elem_ptr(instr_val, base, elem_ptr_ty, indices),
+                Instruction::GetLocal(local_var) => {
+                    Ok(self.compile_get_local(instr_val, local_var))
                 }
+                Instruction::IntToPtr(val, _) => Ok(self.compile_int_to_ptr(instr_val, val)),
+                Instruction::Load(src_val) => self.compile_load(instr_val, src_val),
+                Instruction::MemCopyBytes {
+                    dst_val_ptr,
+                    src_val_ptr,
+                    byte_len,
+                } => {
+                    Ok(self.compile_mem_copy_bytes(instr_val, dst_val_ptr, src_val_ptr, *byte_len))
+                }
+                Instruction::MemCopyVal {
+                    dst_val_ptr,
+                    src_val_ptr,
+                } => Ok(self.compile_mem_copy_val(instr_val, dst_val_ptr, src_val_ptr)),
+                Instruction::Nop => Ok(()),
+                Instruction::PtrToInt(ptr_val, int_ty) => {
+                    Ok(self.compile_ptr_to_int(instr_val, ptr_val, int_ty))
+                }
+                Instruction::Ret(ret_val, ty) => Ok(if func_is_entry {
+                    self.compile_ret_from_entry(instr_val, ret_val, ty)
+                } else {
+                    self.compile_ret_from_call(instr_val, ret_val)
+                }),
                 Instruction::Store {
-                    dst_val,
+                    dst_val_ptr,
                     stored_val,
-                } => check!(
-                    self.compile_store(instr_val, dst_val, stored_val),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ),
+                } => self.compile_store(instr_val, dst_val_ptr, stored_val),
             }
-        } else {
-            errors.push(CompileError::Internal(
-                "Value not an instruction.",
-                self.md_mgr
-                    .val_to_span(self.context, *instr_val)
-                    .unwrap_or_else(Self::empty_span),
-            ));
+            .into()
         }
-        ok((), warnings, errors)
     }
-
-    // OK, I began by trying to translate the IR ASM block data structures back into AST data
-    // structures which I could feed to the code in asm_generation/expression/mod.rs where it
-    // compiles the inline ASM.  But it's more work to do that than to just re-implement that
-    // algorithm with the IR data here.
 
     fn compile_asm_block(
         &mut self,
@@ -488,11 +429,6 @@ impl<'ir> FuelAsmBuilder<'ir> {
         ok((), warnings, errors)
     }
 
-    fn compile_addr_of(&mut self, instr_val: &Value, arg: &Value) {
-        let reg = self.value_to_register(arg);
-        self.reg_map.insert(*instr_val, reg);
-    }
-
     fn compile_bitcast(&mut self, instr_val: &Value, bitcast_val: &Value, to_type: &Type) {
         let val_reg = self.value_to_register(bitcast_val);
         let reg = if to_type.is_bool(self.context) {
@@ -557,53 +493,10 @@ impl<'ir> FuelAsmBuilder<'ir> {
         self.cur_bytecode.push(Op::jump_to_label(label));
     }
 
-    fn compile_cast_ptr(&mut self, instr_val: &Value, val: &Value, ty: &Type, offs: u64) {
-        // `cast_ptr` is replicating the old `get_ptr` functionality of casting between reference
-        // types and indexing.  It will be superceded by proper pointers and GEPs when they arrive.
-        // In the meantime we still need this for storage writes, etc.
-        //
-        // The `val` is guaranteed to be a `get_local` instruction, which will have returned an
-        // address.  All we need to worry about is the indexing, where we increment the address by
-        // the size of the type multiplied by offs.
-
+    fn compile_cast_ptr(&mut self, instr_val: &Value, val: &Value, _ptr_ty: &Type) {
+        // The val type and ptr_ty should be validated/verified already by IR.
         let val_reg = self.value_to_register(val);
-
-        if offs == 0 {
-            // Nothing to do.
-            self.reg_map.insert(*instr_val, val_reg);
-        } else {
-            let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
-
-            let ty_size_in_bytes = ir_type_size_in_bytes(self.context, ty);
-            let offset_in_bytes = ty_size_in_bytes * offs;
-
-            let instr_reg = self.reg_seqr.next();
-            if offset_in_bytes > compiler_constants::TWELVE_BITS {
-                self.number_to_reg(offset_in_bytes, &instr_reg, owning_span.clone());
-                self.cur_bytecode.push(Op {
-                    opcode: either::Either::Left(VirtualOp::ADD(
-                        instr_reg.clone(),
-                        self.locals_base_reg().clone(),
-                        instr_reg.clone(),
-                    )),
-                    comment: "get offset for ptr_cast".into(),
-                    owning_span,
-                });
-            } else {
-                self.cur_bytecode.push(Op {
-                    opcode: either::Either::Left(VirtualOp::ADDI(
-                        instr_reg.clone(),
-                        self.locals_base_reg().clone(),
-                        VirtualImmediate12 {
-                            value: (offset_in_bytes) as u16,
-                        },
-                    )),
-                    comment: "get offset for ptr_cast".into(),
-                    owning_span,
-                });
-            }
-            self.reg_map.insert(*instr_val, instr_reg);
-        }
+        self.reg_map.insert(*instr_val, val_reg);
     }
 
     fn compile_cmp(
@@ -633,17 +526,14 @@ impl<'ir> FuelAsmBuilder<'ir> {
         cond_value: &Value,
         true_block: &BranchToWithArgs,
         false_block: &BranchToWithArgs,
-    ) -> CompileResult<()> {
+    ) -> Result<(), CompileError> {
         if true_block.block == false_block.block && true_block.block.num_args(self.context) > 0 {
-            return err(
-                Vec::new(),
-                vec![CompileError::Internal(
-                    "Cannot compile CBR with both branches going to same dest block",
-                    self.md_mgr
-                        .val_to_span(self.context, *cond_value)
-                        .unwrap_or_else(Self::empty_span),
-                )],
-            );
+            return Err(CompileError::Internal(
+                "Cannot compile CBR with both branches going to same dest block",
+                self.md_mgr
+                    .val_to_span(self.context, *cond_value)
+                    .unwrap_or_else(Self::empty_span),
+            ));
         }
         self.compile_branch_to_phi_value(true_block);
         self.compile_branch_to_phi_value(false_block);
@@ -656,7 +546,8 @@ impl<'ir> FuelAsmBuilder<'ir> {
 
         let false_label = self.block_to_label(&false_block.block);
         self.cur_bytecode.push(Op::jump_to_label(false_label));
-        ok((), vec![], vec![])
+
+        Ok(())
     }
 
     fn compile_branch_to_phi_value(&mut self, to_block: &BranchToWithArgs) {
@@ -712,196 +603,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
         self.reg_map.insert(*instr_val, instr_reg);
     }
 
-    fn compile_extract_element(
-        &mut self,
-        instr_val: &Value,
-        array: &Value,
-        ty: &Type,
-        index_val: &Value,
-    ) {
-        // Base register should pointer to some stack allocated memory.
-        let base_reg = self.value_to_register(array);
-
-        // Index value is the array element index, not byte nor word offset.
-        let index_reg = self.value_to_register(index_val);
-        let rel_offset_reg = self.reg_seqr.next();
-
-        // We could put the OOB check here, though I'm now thinking it would be too wasteful.
-        // See compile_bounds_assertion() in expression/array.rs (or look in Git history).
-
-        let instr_reg = self.reg_seqr.next();
-        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
-        let elem_type = ty.get_array_elem_type(self.context).unwrap();
-        let elem_size = ir_type_size_in_bytes(self.context, &elem_type);
-        if self.is_copy_type(&elem_type) {
-            self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::MULI(
-                    rel_offset_reg.clone(),
-                    index_reg,
-                    VirtualImmediate12 { value: 8 },
-                )),
-                comment: "extract_element relative offset".into(),
-                owning_span: owning_span.clone(),
-            });
-            let elem_offs_reg = self.reg_seqr.next();
-            self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::ADD(
-                    elem_offs_reg.clone(),
-                    base_reg,
-                    rel_offset_reg,
-                )),
-                comment: "extract_element absolute offset".into(),
-                owning_span: owning_span.clone(),
-            });
-            self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::LW(
-                    instr_reg.clone(),
-                    elem_offs_reg,
-                    VirtualImmediate12 { value: 0 },
-                )),
-                comment: "extract_element".into(),
-                owning_span,
-            });
-        } else {
-            // Value too big for a register, so we return the memory offset.
-            if elem_size > compiler_constants::TWELVE_BITS {
-                let size_data_id = self
-                    .data_section
-                    .insert_data_value(Entry::new_word(elem_size, None, None));
-                let size_reg = self.reg_seqr.next();
-                self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::LWDataId(size_reg.clone(), size_data_id)),
-                    owning_span: owning_span.clone(),
-                    comment: "loading element size for relative offset".into(),
-                });
-                self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::MUL(instr_reg.clone(), index_reg, size_reg)),
-                    comment: "extract_element relative offset".into(),
-                    owning_span: owning_span.clone(),
-                });
-            } else {
-                self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::MULI(
-                        instr_reg.clone(),
-                        index_reg,
-                        VirtualImmediate12 {
-                            value: elem_size as u16,
-                        },
-                    )),
-                    comment: "extract_element relative offset".into(),
-                    owning_span: owning_span.clone(),
-                });
-            }
-            self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::ADD(
-                    instr_reg.clone(),
-                    base_reg,
-                    instr_reg.clone(),
-                )),
-                comment: "extract_element absolute offset".into(),
-                owning_span,
-            });
-        }
-
-        self.reg_map.insert(*instr_val, instr_reg);
-    }
-
-    fn compile_extract_value(&mut self, instr_val: &Value, aggregate_val: &Value, indices: &[u64]) {
-        // Base register should pointer to some stack allocated memory.
-        let base_reg = self.value_to_register(aggregate_val);
-        let ((extract_offset, _), field_type) = aggregate_idcs_to_field_layout(
-            self.context,
-            &aggregate_val.get_type(self.context).unwrap(),
-            indices,
-        );
-
-        let instr_reg = self.reg_seqr.next();
-        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
-        if self.is_copy_type(&field_type) {
-            if extract_offset > compiler_constants::TWELVE_BITS {
-                let offset_reg = self.reg_seqr.next();
-                self.number_to_reg(extract_offset, &offset_reg, owning_span.clone());
-                self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::ADD(
-                        offset_reg.clone(),
-                        base_reg.clone(),
-                        base_reg,
-                    )),
-                    comment: "add array base to offset".into(),
-                    owning_span: owning_span.clone(),
-                });
-                self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::LW(
-                        instr_reg.clone(),
-                        offset_reg,
-                        VirtualImmediate12 { value: 0 },
-                    )),
-                    comment: format!(
-                        "extract_value @ {}",
-                        indices
-                            .iter()
-                            .map(|idx| format!("{idx}"))
-                            .collect::<Vec<String>>()
-                            .join(",")
-                    ),
-                    owning_span,
-                });
-            } else {
-                self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::LW(
-                        instr_reg.clone(),
-                        base_reg,
-                        VirtualImmediate12 {
-                            value: extract_offset as u16,
-                        },
-                    )),
-                    comment: format!(
-                        "extract_value @ {}",
-                        indices
-                            .iter()
-                            .map(|idx| format!("{idx}"))
-                            .collect::<Vec<String>>()
-                            .join(",")
-                    ),
-                    owning_span,
-                });
-            }
-        } else {
-            // Value too big for a register, so we return the memory offset.
-            if extract_offset * 8 > compiler_constants::TWELVE_BITS {
-                let offset_reg = self.reg_seqr.next();
-                self.number_to_reg(extract_offset * 8, &offset_reg, owning_span.clone());
-                self.cur_bytecode.push(Op {
-                    opcode: either::Either::Left(VirtualOp::ADD(
-                        instr_reg.clone(),
-                        base_reg,
-                        offset_reg,
-                    )),
-                    comment: "extract address".into(),
-                    owning_span,
-                });
-            } else {
-                self.cur_bytecode.push(Op {
-                    opcode: either::Either::Left(VirtualOp::ADDI(
-                        instr_reg.clone(),
-                        base_reg,
-                        VirtualImmediate12 {
-                            value: (extract_offset * 8) as u16,
-                        },
-                    )),
-                    comment: "extract address".into(),
-                    owning_span,
-                });
-            }
-        }
-
-        self.reg_map.insert(*instr_val, instr_reg);
-    }
-
-    fn compile_get_storage_key(&mut self, instr_val: &Value) -> CompileResult<()> {
-        let warnings: Vec<CompileWarning> = Vec::new();
-        let mut errors: Vec<CompileError> = Vec::new();
-
+    fn compile_get_storage_key(&mut self, instr_val: &Value) -> Result<(), CompileError> {
         let state_idx = self.md_mgr.val_to_storage_key(self.context, *instr_val);
         let instr_span = self.md_mgr.val_to_span(self.context, *instr_val);
 
@@ -914,11 +616,10 @@ impl<'ir> FuelAsmBuilder<'ir> {
                 )
             }
             None => {
-                errors.push(CompileError::Internal(
+                return Err(CompileError::Internal(
                     "State index for __get_storage_key is not available as a metadata",
                     instr_span.unwrap_or_else(Self::empty_span),
                 ));
-                return err(warnings, errors);
             }
         };
 
@@ -939,7 +640,176 @@ impl<'ir> FuelAsmBuilder<'ir> {
             owning_span: instr_span,
         });
         self.reg_map.insert(*instr_val, reg);
-        ok((), warnings, errors)
+
+        Ok(())
+    }
+
+    fn compile_get_elem_ptr(
+        &mut self,
+        instr_val: &Value,
+        base_val: &Value,
+        _elem_ty: &Type,
+        indices: &[Value],
+    ) -> Result<(), CompileError> {
+        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
+        let base_type = base_val
+            .get_type(self.context)
+            .and_then(|ty| ty.get_inner_type(self.context))
+            .ok_or_else(|| {
+                CompileError::Internal(
+                    "Failed to get type of base value for GEP.",
+                    owning_span
+                        .as_ref()
+                        .cloned()
+                        .unwrap_or_else(|| Span::dummy()),
+                )
+            })?;
+
+        // A utility lambda to unwrap Values which must be constant uints.
+        let unwrap_constant_uint = |idx_val: &Value| {
+            idx_val
+                .get_constant(self.context)
+                .and_then(|idx_const| {
+                    if let ConstantValue::Uint(idx) = idx_const.value {
+                        Some(idx as usize)
+                    } else {
+                        None
+                    }
+                })
+                .ok_or_else(|| {
+                    CompileError::Internal(
+                        "Failed to convert struct index from constant to integer.",
+                        sway_types::span::Span::dummy(),
+                    )
+                })
+        };
+
+        // The indices for a GEP are Values.  For structs and unions they are always constant
+        // uints.  For arrays they may be any value expression.  So we need to take all the
+        // individual offsets and add them up.
+        //
+        // Ideally, most of the time, there will only be a single constant struct index.  And often
+        // they will be zero, making the GEP a no-op.  But if not we need to add the non-constant
+        // values together.
+        //
+        // Eventually this can be optimised with an ASM opt pass which can combine constant
+        // ADD/ADDIs together.  Then we could just emit an ADD for every index at this stage.  But
+        // until then we can keep track of the constant values and add them once.
+
+        let base_reg = self.value_to_register(base_val);
+        let (base_reg, const_offs, _) =
+            indices
+                .iter()
+                .fold(Ok((base_reg, 0, base_type)), |acc, idx_val| {
+                    // So we're folding to a Result, as unwrapping the constants can fail.
+                    acc.and_then(|(reg, offs, elem_ty)| {
+                        // If we find a constant index then we add its offset to `offs`.  Otherwise we grab
+                        // its value, which should be compiled already, and add it to reg.
+                        if elem_ty.is_struct(self.context) {
+                            // For structs the index must be a const uint.
+                            unwrap_constant_uint(idx_val).map(|idx| {
+                                let field_types = elem_ty.get_field_types(self.context);
+                                let field_type = field_types[idx];
+                                let field_offs_in_bytes = field_types
+                                    .iter()
+                                    .take(idx)
+                                    .map(|field_ty| ir_type_size_in_bytes(self.context, field_ty))
+                                    .sum::<u64>();
+                                (reg, offs + field_offs_in_bytes, field_type)
+                            })
+                        } else if elem_ty.is_union(self.context) {
+                            // For unions the index must also be a const uint.
+                            unwrap_constant_uint(idx_val).map(|idx| {
+                                let field_type = elem_ty.get_field_types(self.context)[idx];
+                                let union_size_in_bytes =
+                                    ir_type_size_in_bytes(self.context, &elem_ty);
+                                let field_size_in_bytes =
+                                    ir_type_size_in_bytes(self.context, &field_type);
+
+                                // The union fields are at offset (union_size - variant_size) due to left padding.
+                                (
+                                    reg,
+                                    offs + union_size_in_bytes - field_size_in_bytes,
+                                    field_type,
+                                )
+                            })
+                        } else if elem_ty.is_array(self.context) {
+                            // For arrays the index is a value.  We need to fetch it and add it to
+                            // the base.
+                            let index_reg =
+                                self.opt_value_to_register(idx_val).ok_or_else(|| {
+                                    CompileError::Internal(
+                                        "Array index has not been compiled before use.",
+                                        sway_types::span::Span::dummy(),
+                                    )
+                                })?;
+                            let offset_reg = self.reg_seqr.next();
+
+                            self.cur_bytecode.push(Op {
+                                opcode: Either::Left(VirtualOp::ADD(
+                                    offset_reg.clone(),
+                                    reg,
+                                    index_reg,
+                                )),
+                                comment: "get offset to element".into(),
+                                owning_span: owning_span.clone(),
+                            });
+                            let member_type =
+                                elem_ty.get_array_elem_type(self.context).ok_or_else(|| {
+                                    CompileError::Internal(
+                                        "Can't get array elem type for GEP.",
+                                        sway_types::span::Span::dummy(),
+                                    )
+                                })?;
+
+                            Ok((offset_reg, offs, member_type))
+                        } else {
+                            Err(CompileError::Internal(
+                                "Cannot get element offset in non-aggregate.",
+                                sway_types::span::Span::dummy(),
+                            ))
+                        }
+                    })
+                })?;
+
+        if const_offs == 0 {
+            // No need to add anything.
+            self.reg_map.insert(*instr_val, base_reg);
+        } else {
+            let instr_reg = self.reg_seqr.next();
+            if const_offs > compiler_constants::TWELVE_BITS {
+                let offset_data_id = self
+                    .data_section
+                    .insert_data_value(Entry::new_word(const_offs, None, None));
+                let offset_reg = self.reg_seqr.next();
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::LWDataId(offset_reg.clone(), offset_data_id)),
+                    owning_span: owning_span.clone(),
+                    comment: "loading offset for GEP".into(),
+                });
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::ADD(instr_reg.clone(), base_reg, offset_reg)),
+                    comment: "get offset to element".into(),
+                    owning_span,
+                });
+            } else {
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::ADDI(
+                        instr_reg.clone(),
+                        base_reg,
+                        VirtualImmediate12 {
+                            value: const_offs as u16,
+                        },
+                    )),
+                    comment: "get offset to element".into(),
+                    owning_span,
+                });
+            }
+
+            self.reg_map.insert(*instr_val, instr_reg);
+        }
+
+        Ok(())
     }
 
     fn compile_get_local(&mut self, instr_val: &Value, local_var: &LocalVar) {
@@ -1002,228 +872,14 @@ impl<'ir> FuelAsmBuilder<'ir> {
         self.reg_map.insert(*instr_val, instr_reg);
     }
 
-    fn compile_insert_element(
-        &mut self,
-        instr_val: &Value,
-        array: &Value,
-        ty: &Type,
-        value: &Value,
-        index_val: &Value,
-    ) {
-        // Base register should point to some stack allocated memory.
-        let base_reg = self.value_to_register(array);
-        let insert_reg = self.value_to_register(value);
-
-        // Index value is the array element index, not byte nor word offset.
-        let index_reg = self.value_to_register(index_val);
-        let rel_offset_reg = self.reg_seqr.next();
-
-        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
-
-        let elem_type = ty.get_array_elem_type(self.context).unwrap();
-        let elem_size = ir_type_size_in_bytes(self.context, &elem_type);
-        if self.is_copy_type(&elem_type) {
-            self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::MULI(
-                    rel_offset_reg.clone(),
-                    index_reg,
-                    VirtualImmediate12 { value: 8 },
-                )),
-                comment: "insert_element relative offset".into(),
-                owning_span: owning_span.clone(),
-            });
-            let elem_offs_reg = self.reg_seqr.next();
-            self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::ADD(
-                    elem_offs_reg.clone(),
-                    base_reg.clone(),
-                    rel_offset_reg,
-                )),
-                comment: "insert_element absolute offset".into(),
-                owning_span: owning_span.clone(),
-            });
-            self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::SW(
-                    elem_offs_reg,
-                    insert_reg,
-                    VirtualImmediate12 { value: 0 },
-                )),
-                comment: "insert_element".into(),
-                owning_span,
-            });
-        } else {
-            // Element size is larger than 8; we switch to bytewise offsets and sizes and use MCP.
-            if elem_size > compiler_constants::TWELVE_BITS {
-                todo!("array element size bigger than 4k")
-            } else {
-                let elem_index_offs_reg = self.reg_seqr.next();
-                self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::MULI(
-                        elem_index_offs_reg.clone(),
-                        index_reg,
-                        VirtualImmediate12 {
-                            value: elem_size as u16,
-                        },
-                    )),
-                    comment: "insert_element relative offset".into(),
-                    owning_span: owning_span.clone(),
-                });
-                self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::ADD(
-                        elem_index_offs_reg.clone(),
-                        base_reg.clone(),
-                        elem_index_offs_reg.clone(),
-                    )),
-                    comment: "insert_element absolute offset".into(),
-                    owning_span: owning_span.clone(),
-                });
-                self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::MCPI(
-                        elem_index_offs_reg,
-                        insert_reg,
-                        VirtualImmediate12 {
-                            value: elem_size as u16,
-                        },
-                    )),
-                    comment: "insert_element store value".into(),
-                    owning_span,
-                });
-            }
-        }
-
-        // We set the 'instruction' register to the base register, so that cascading inserts will
-        // work.
-        self.reg_map.insert(*instr_val, base_reg);
-    }
-
-    fn compile_insert_value(
-        &mut self,
-        instr_val: &Value,
-        aggregate_val: &Value,
-        value: &Value,
-        indices: &[u64],
-    ) {
-        // Base register should point to some stack allocated memory.
-        let base_reg = self.value_to_register(aggregate_val);
-
-        let insert_reg = self.value_to_register(value);
-        let ((mut insert_offs, field_size_in_bytes), field_type) = aggregate_idcs_to_field_layout(
-            self.context,
-            &aggregate_val.get_type(self.context).unwrap(),
-            indices,
-        );
-
-        let value_type = value.get_type(self.context).unwrap();
-        let value_size_in_bytes = ir_type_size_in_bytes(self.context, &value_type);
-        let value_size_in_words = size_bytes_in_words!(value_size_in_bytes);
-
-        // Account for the padding if the final field type is a union and the value we're trying to
-        // insert is smaller than the size of the union (i.e. we're inserting a small variant).
-        if field_type.is_union(self.context) {
-            let field_size_in_words = size_bytes_in_words!(field_size_in_bytes);
-            assert!(field_size_in_words >= value_size_in_words);
-            insert_offs += field_size_in_words - value_size_in_words;
-        }
-
-        let indices_str = indices
-            .iter()
-            .map(|idx| format!("{idx}"))
-            .collect::<Vec<String>>()
-            .join(",");
-
-        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
-
-        if self.is_copy_type(&value_type) {
-            if insert_offs > compiler_constants::TWELVE_BITS {
-                let insert_offs_reg = self.reg_seqr.next();
-                self.number_to_reg(insert_offs, &insert_offs_reg, owning_span.clone());
-                self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::ADD(
-                        base_reg.clone(),
-                        base_reg.clone(),
-                        insert_offs_reg,
-                    )),
-                    comment: "insert_value absolute offset".into(),
-                    owning_span: owning_span.clone(),
-                });
-                self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::SW(
-                        base_reg.clone(),
-                        insert_reg,
-                        VirtualImmediate12 { value: 0 },
-                    )),
-                    comment: format!("insert_value @ {indices_str}"),
-                    owning_span,
-                });
-            } else {
-                self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::SW(
-                        base_reg.clone(),
-                        insert_reg,
-                        VirtualImmediate12 {
-                            value: insert_offs as u16,
-                        },
-                    )),
-                    comment: format!("insert_value @ {indices_str}"),
-                    owning_span,
-                });
-            }
-        } else {
-            let offs_reg = self.reg_seqr.next();
-            if insert_offs * 8 > compiler_constants::TWELVE_BITS {
-                self.number_to_reg(insert_offs * 8, &offs_reg, owning_span.clone());
-            } else {
-                self.cur_bytecode.push(Op {
-                    opcode: either::Either::Left(VirtualOp::ADDI(
-                        offs_reg.clone(),
-                        base_reg.clone(),
-                        VirtualImmediate12 {
-                            value: (insert_offs * 8) as u16,
-                        },
-                    )),
-                    comment: format!("get struct field(s) {indices_str} offset"),
-                    owning_span: owning_span.clone(),
-                });
-            }
-            if value_size_in_bytes > compiler_constants::TWELVE_BITS {
-                let size_reg = self.reg_seqr.next();
-                self.number_to_reg(value_size_in_bytes, &size_reg, owning_span.clone());
-                self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::MCP(offs_reg, insert_reg, size_reg)),
-                    comment: "store struct field value".into(),
-                    owning_span,
-                });
-            } else {
-                self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::MCPI(
-                        offs_reg,
-                        insert_reg,
-                        VirtualImmediate12 {
-                            value: value_size_in_bytes as u16,
-                        },
-                    )),
-                    comment: "store struct field value".into(),
-                    owning_span,
-                });
-            }
-        }
-
-        // We set the 'instruction' register to the base register, so that cascading inserts will
-        // work.
-        self.reg_map.insert(*instr_val, base_reg);
-    }
-
     fn compile_int_to_ptr(&mut self, instr_val: &Value, int_to_ptr_val: &Value) {
         let val_reg = self.value_to_register(int_to_ptr_val);
         self.reg_map.insert(*instr_val, val_reg);
     }
 
-    fn compile_load(&mut self, instr_val: &Value, src_val: &Value) -> CompileResult<()> {
-        let local_var = self.resolve_ptr(src_val);
-        if local_var.value.is_none() {
-            return local_var.map(|_| ());
-        }
-        let local_var = local_var.value.unwrap().0;
+    fn compile_load(&mut self, instr_val: &Value, src_val: &Value) -> Result<(), CompileError> {
+        // XXX GEPs now have byte offsets so we need to change this.
+        let local_var = self.resolve_ptr(src_val)?;
         let instr_reg = self.reg_seqr.next();
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
         match self.ptr_map.get(&local_var) {
@@ -1312,20 +968,20 @@ impl<'ir> FuelAsmBuilder<'ir> {
             },
         }
         self.reg_map.insert(*instr_val, instr_reg);
-        ok((), Vec::new(), Vec::new())
+        Ok(())
     }
 
-    fn compile_mem_copy(
+    fn compile_mem_copy_bytes(
         &mut self,
         instr_val: &Value,
-        dst_val: &Value,
-        src_val: &Value,
+        dst_val_ptr: &Value,
+        src_val_ptr: &Value,
         byte_len: u64,
     ) {
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
 
-        let dst_reg = self.value_to_register(dst_val);
-        let src_reg = self.value_to_register(src_val);
+        let dst_reg = self.value_to_register(dst_val_ptr);
+        let src_reg = self.value_to_register(src_val_ptr);
 
         let len_reg = self.reg_seqr.next();
         self.cur_bytecode.push(Op {
@@ -1344,6 +1000,20 @@ impl<'ir> FuelAsmBuilder<'ir> {
             comment: "copy memory with mem_copy".into(),
             owning_span,
         });
+    }
+
+    fn compile_mem_copy_val(
+        &mut self,
+        instr_val: &Value,
+        dst_val_ptr: &Value,
+        src_val_ptr: &Value,
+    ) {
+        let dst_ty = dst_val_ptr
+            .get_type(self.context)
+            .and_then(|ptr_ty| ptr_ty.get_inner_type(self.context))
+            .expect("mem_copy dst type must be known and a pointer.");
+        let byte_len = ir_type_size_in_bytes(self.context, &dst_ty);
+        self.compile_mem_copy_bytes(instr_val, dst_val_ptr, src_val_ptr, byte_len)
     }
 
     fn compile_log(&mut self, instr_val: &Value, log_val: &Value, log_ty: &Type, log_id: &Value) {
@@ -1388,6 +1058,12 @@ impl<'ir> FuelAsmBuilder<'ir> {
                 comment: "".into(),
             });
         }
+    }
+
+    fn compile_ptr_to_int(&mut self, instr_val: &Value, ptr_val: &Value, _int_ty: &Type) {
+        // The int_ty should be validated/verified already by IR.
+        let reg = self.value_to_register(ptr_val);
+        self.reg_map.insert(*instr_val, reg);
     }
 
     fn compile_read_register(&mut self, instr_val: &Value, reg: &sway_ir::Register) {
@@ -1567,21 +1243,9 @@ impl<'ir> FuelAsmBuilder<'ir> {
         instr_val: &Value,
         key: &Value,
         number_of_slots: &Value,
-    ) -> CompileResult<()> {
-        // Make sure that key is a pointer to B256.
-        assert!(key.get_type(self.context).is(Type::is_b256, self.context));
+    ) -> Result<(), CompileError> {
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
-
-        let key_var = self.resolve_ptr(key);
-        if key_var.value.is_none() {
-            return key_var.map(|_| ());
-        }
-        let (key_var, var_ty, offset) = key_var.value.unwrap();
-
-        // Not expecting an offset here nor a pointer cast
-        assert!(offset == 0);
-        assert!(var_ty.is_b256(self.context));
-
+        let key_var = self.resolve_ptr(key)?;
         let key_reg = match self.ptr_map.get(&key_var) {
             Some(Storage::Stack(key_offset)) => {
                 let base_reg = self.locals_base_reg().clone();
@@ -1591,7 +1255,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
             _ => unreachable!("Unexpected storage locations for key and val"),
         };
 
-        // capture the status of whether the slot was set before calling this instruction
+        // Capture the status of whether the slot was set before calling this instruction.
         let was_slot_set_reg = self.reg_seqr.next();
 
         // Number of slots to be cleared
@@ -1609,7 +1273,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
 
         self.reg_map.insert(*instr_val, was_slot_set_reg);
 
-        ok((), Vec::new(), Vec::new())
+        Ok(())
     }
 
     fn compile_state_access_quad_word(
@@ -1619,22 +1283,10 @@ impl<'ir> FuelAsmBuilder<'ir> {
         key: &Value,
         number_of_slots: &Value,
         access_type: StateAccessType,
-    ) -> CompileResult<()> {
+    ) -> Result<(), CompileError> {
         // Make sure that both val and key are pointers to B256.
-        assert!(val.get_type(self.context).is(Type::is_b256, self.context));
-        assert!(key.get_type(self.context).is(Type::is_b256, self.context));
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
-
-        let key_var = self.resolve_ptr(key);
-        if key_var.value.is_none() {
-            return key_var.map(|_| ());
-        }
-        let (key_var, var_ty, offset) = key_var.value.unwrap();
-
-        // Not expecting an offset here nor a pointer cast
-        assert!(offset == 0);
-        assert!(var_ty.is_b256(self.context));
-
+        let key_var = self.resolve_ptr(key)?;
         let val_reg = if matches!(
             val.get_instruction(self.context),
             Some(Instruction::IntToPtr(..))
@@ -1644,14 +1296,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                 None => unreachable!("int_to_ptr instruction doesn't have vreg mapped"),
             }
         } else {
-            // Expect ptr_ty here to also be b256 and offset to be whatever...
-            let local_val = self.resolve_ptr(val);
-            if local_val.value.is_none() {
-                return local_val.map(|_| ());
-            }
-            let (local_val, local_val_ty, _offset) = local_val.value.unwrap();
-            // Expect the ptr_ty for val to also be B256
-            assert!(local_val_ty.is_b256(self.context));
+            let local_val = self.resolve_ptr(val)?;
             match self.ptr_map.get(&local_val) {
                 Some(Storage::Stack(val_offset)) => {
                     let base_reg = self.locals_base_reg().clone();
@@ -1698,23 +1343,15 @@ impl<'ir> FuelAsmBuilder<'ir> {
 
         self.reg_map.insert(*instr_val, was_slot_set_reg);
 
-        ok((), Vec::new(), Vec::new())
+        Ok(())
     }
 
-    fn compile_state_load_word(&mut self, instr_val: &Value, key: &Value) -> CompileResult<()> {
-        // Make sure that the key is a pointers to B256.
-        assert!(key.get_type(self.context).is(Type::is_b256, self.context));
-
-        let key_var = self.resolve_ptr(key);
-        if key_var.value.is_none() {
-            return key_var.map(|_| ());
-        }
-        let (key_var, var_ty, offset) = key_var.value.unwrap();
-
-        // Not expecting an offset here nor a pointer cast
-        assert!(offset == 0);
-        assert!(var_ty.is_b256(self.context));
-
+    fn compile_state_load_word(
+        &mut self,
+        instr_val: &Value,
+        key: &Value,
+    ) -> Result<(), CompileError> {
+        let key_var = self.resolve_ptr(key)?;
         let load_reg = self.reg_seqr.next();
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
 
@@ -1742,7 +1379,8 @@ impl<'ir> FuelAsmBuilder<'ir> {
         }
 
         self.reg_map.insert(*instr_val, load_reg);
-        ok((), Vec::new(), Vec::new())
+
+        Ok(())
     }
 
     fn compile_state_store_word(
@@ -1750,29 +1388,12 @@ impl<'ir> FuelAsmBuilder<'ir> {
         instr_val: &Value,
         store_val: &Value,
         key: &Value,
-    ) -> CompileResult<()> {
-        // Make sure that key is a pointer to B256.
-        assert!(key.get_type(self.context).is(Type::is_b256, self.context));
-
-        // Make sure that store_val is a U64 value.
-        assert!(store_val
-            .get_type(self.context)
-            .is(Type::is_uint64, self.context));
+    ) -> Result<(), CompileError> {
         let store_reg = self.value_to_register(store_val);
+        let key_var = self.resolve_ptr(key)?;
 
-        // Expect the get_ptr here to have type b256 and offset = 0???
-        let key_var = self.resolve_ptr(key);
-        if key_var.value.is_none() {
-            return key_var.map(|_| ());
-        }
-        let (key_var, key_var_ty, offset) = key_var.value.unwrap();
-
-        // capture the status of whether the slot was set before calling this instruction
+        // Capture the status of whether the slot was set before calling this instruction.
         let was_slot_set_reg = self.reg_seqr.next();
-
-        // Not expecting an offset here nor a pointer cast
-        assert!(offset == 0);
-        assert!(key_var_ty.is_b256(self.context));
 
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
         match self.ptr_map.get(&key_var) {
@@ -1797,7 +1418,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
 
         self.reg_map.insert(*instr_val, was_slot_set_reg);
 
-        ok((), Vec::new(), Vec::new())
+        Ok(())
     }
 
     fn compile_store(
@@ -1805,12 +1426,9 @@ impl<'ir> FuelAsmBuilder<'ir> {
         instr_val: &Value,
         dst_val: &Value,
         stored_val: &Value,
-    ) -> CompileResult<()> {
-        let local_var = self.resolve_ptr(dst_val);
-        if local_var.value.is_none() {
-            return local_var.map(|_| ());
-        }
-        let local_var = local_var.value.unwrap().0;
+    ) -> Result<(), CompileError> {
+        // XXX GEPs now have byte offsets so we need to change this.
+        let local_var = self.resolve_ptr(dst_val)?;
         let stored_reg = self.value_to_register(stored_val);
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
         match self.ptr_map.get(&local_var) {
@@ -1949,44 +1567,34 @@ impl<'ir> FuelAsmBuilder<'ir> {
                 }
             },
         };
-        ok((), Vec::new(), Vec::new())
+
+        Ok(())
     }
 
     pub(crate) fn is_copy_type(&self, ty: &Type) -> bool {
         ty.is_unit(self.context) || ty.is_bool(self.context) | ty.is_uint(self.context)
     }
 
-    fn resolve_ptr(&mut self, ptr_val: &Value) -> CompileResult<(LocalVar, Type, u64)> {
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+    // This sucks a bit -- we shouldn't be necessarily getting the local var for a pointer.  The
+    // pointer is an address, we should just read from it.  The hard bit is knowing whether it's
+    // aligned or not, and needs to be aligned.
+    fn resolve_ptr(&mut self, ptr_val: &Value) -> Result<LocalVar, CompileError> {
         match ptr_val.get_instruction(self.context) {
-            // Return the local variable with its type and an offset of 0.
-            Some(Instruction::GetLocal(local_var)) => ok(
-                (*local_var, local_var.get_type(self.context), 0),
-                warnings,
-                errors,
-            ),
+            Some(Instruction::GetLocal(local_var)) => Ok(*local_var),
+            Some(Instruction::GetElemPtr {
+                ..
+                //base,
+                //elem_ptr_ty,
+                //indices,
+            }) => todo!(),
+            Some(Instruction::CastPtr(local_val, _ty)) => self.resolve_ptr(local_val),
 
-            // Recurse to find the local variable but override the type and offset.
-            Some(Instruction::CastPtr(local_val, ty, offs)) => {
-                let var = check!(
-                    self.resolve_ptr(local_val),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                ok((var.0, *ty, *offs), warnings, errors)
-            }
-
-            _otherwise => {
-                errors.push(CompileError::Internal(
-                    "Destination arg for load/store is not valid.",
-                    self.md_mgr
-                        .val_to_span(self.context, *ptr_val)
-                        .unwrap_or_else(Self::empty_span),
-                ));
-                err(warnings, errors)
-            }
+            _otherwise => Err(CompileError::Internal(
+                "Destination ptr arg for load/store is not valid.",
+                self.md_mgr
+                    .val_to_span(self.context, *ptr_val)
+                    .unwrap_or_else(Self::empty_span),
+            )),
         }
     }
 

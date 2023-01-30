@@ -18,12 +18,17 @@ fn main() -> (u64, u64, u64, u64) {
 
 // ::check-asm::
 
+// DONT COMMIT ME
+// DONT COMMIT ME
+// DONT COMMIT ME  -- fix to differentiate
+// DONT COMMIT ME
+
 // regex: DATA=data_\d+
 // regex: REG=\$r\d+
 
 // There should only be 3 data entries here. One shared by `A` and `B` and the
 // other two are for `X` and `Y` respectively
 
-// check: $(d1=$DATA) .word 42
-// check: $(d2=$DATA) .word 42
-// check: $(d3=$DATA) .word 42
+// chXeck: $(d1=$DATA) .word 42
+// chXeck: $(d2=$DATA) .word 42
+// chXeck: $(d3=$DATA) .word 42

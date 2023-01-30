@@ -15,13 +15,14 @@ fn main() {
 
 // check: $(gtf1_index=$VAL) = const u64 1
 // check: $(gtf1=$VAL) = gtf $gtf1_index, 66
-// check: $(field1_var=$VAL) = get_local u64 field1
+// check: $(field1_var=$VAL) = get_local ptr u64, field1
 // check:  store $gtf1 to $field1_var
 
 // check: $(gtf2_index=$VAL) = const u64 2
 // check: $(gtf2=$VAL) = gtf $gtf2_index, 119
-// check: $(gtf2_int_to_ptr=$VAL) = int_to_ptr $gtf2 to b256
-// check: $(field2_var=$VAL) = get_local b256 field2
+// check: $(gtf2_int_to_ptr_ptr=$VAL) = int_to_ptr $gtf2 to ptr b256
+// check: $(gtf2_int_to_ptr=$VAL) = load $gtf2_int_to_ptr_ptr
+// check: $(field2_var=$VAL) = get_local ptr b256, field2
 // check: store $gtf2_int_to_ptr to $field2_var
 
 // ::check-asm::

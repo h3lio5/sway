@@ -48,7 +48,7 @@ pub(crate) fn compile_const_decl(
             let mut stored_const_opt: Option<&Constant> = None;
             for ins in fn_compiler.current_block.instruction_iter(env.context) {
                 if let Some(Instruction::Store {
-                    dst_val,
+                    dst_val_ptr: dst_val,
                     stored_val,
                 }) = ins.get_instruction(env.context)
                 {
@@ -284,7 +284,7 @@ fn const_eval_typed_expr(
                 // We couldn't evaluate all fields to a constant.
                 return Ok(None);
             }
-            get_aggregate_for_types(lookup.type_engine, lookup.context, &field_typs).map_or(
+            get_struct_for_types(lookup.type_engine, lookup.context, &field_typs).map_or(
                 None,
                 |struct_ty| {
                     Some(Constant::new_struct(
@@ -364,7 +364,7 @@ fn const_eval_typed_expr(
             ..
         } => {
             let aggregate =
-                create_enum_aggregate(lookup.type_engine, lookup.context, &enum_decl.variants);
+                create_enum_type(lookup.type_engine, lookup.context, &enum_decl.variants);
             if let Ok(enum_ty) = aggregate {
                 let tag_value = Constant::new_uint(lookup.context, 64, *tag as u64);
                 let mut fields: Vec<Constant> = vec![tag_value];

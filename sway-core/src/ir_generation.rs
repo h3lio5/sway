@@ -18,6 +18,7 @@ use crate::{language::ty, Engines};
 pub fn compile_program(
     program: &ty::TyProgram,
     include_tests: bool,
+    target_fuel_vm: bool,
     engines: Engines<'_>,
 ) -> Result<Context, CompileError> {
     let declaration_engine = engines.de();
@@ -90,6 +91,34 @@ pub fn compile_program(
             &test_fns,
         ),
     }?;
-    ctx.verify()
-        .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))
+
+    let ir_error_to_internal = |ir_error: sway_ir::IrError| {
+        CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+    };
+
+    // Target specific transforms should be moved into the general pass manager, but for now, until
+    // we make the verifier be target parameterised, we can run them here by default.
+    if target_fuel_vm {
+        // FuelVM target specific transforms.
+        let all_functions = ctx
+            .module_iter()
+            .flat_map(|module| module.function_iter(&ctx))
+            .collect::<Vec<_>>();
+
+        let ar_stub = sway_ir::AnalysisResults::default();
+        for func in &all_functions {
+            // Demote large by-value constants, arguments and return values to by-reference values
+            // using temporaries.
+            sway_ir::optimize::const_demotion(&mut ctx, &ar_stub, *func)
+                .map_err(ir_error_to_internal)?;
+            sway_ir::optimize::fn_arg_demotion(&mut ctx, &ar_stub, *func)
+                .map_err(ir_error_to_internal)?;
+            sway_ir::optimize::ret_val_demotion(&mut ctx, &ar_stub, *func)
+                .map_err(ir_error_to_internal)?;
+        }
+    }
+
+    //println!("{ctx}");
+
+    ctx.verify().map_err(ir_error_to_internal)
 }

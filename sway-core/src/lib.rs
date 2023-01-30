@@ -344,8 +344,7 @@ pub fn parsed_to_ast(
     errors.extend(cfa_res.errors);
     warnings.extend(cfa_res.warnings);
 
-    // Evaluate const declarations,
-    // to allow storage slots initializion with consts.
+    // Evaluate const declarations, to allow storage slots initializion with consts.
     let mut ctx = Context::default();
     let mut md_mgr = MetadataManager::default();
     let module = Module::new(&mut ctx, Kind::Contract);
@@ -496,8 +495,12 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // IR phase.
 
     let tree_type = program.kind.tree_type();
-    let mut ir = match ir_generation::compile_program(program, build_config.include_tests, engines)
-    {
+    let mut ir = match ir_generation::compile_program(
+        program,
+        build_config.include_tests,
+        build_config.build_target == BuildTarget::Fuel,
+        engines,
+    ) {
         Ok(ir) => ir,
         Err(e) => return err(warnings, vec![e]),
     };
