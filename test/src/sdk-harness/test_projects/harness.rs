@@ -1,5 +1,6 @@
 // Add test modules here:
 
+mod assert_eq;
 mod auth;
 mod block;
 mod call_frames;
