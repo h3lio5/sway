@@ -489,7 +489,7 @@ fn get_attributed_purity(
     match attributes.get(&AttributeKind::Storage) {
         Some(attrs) if !attrs.is_empty() => {
             for arg in attrs.iter().flat_map(|attr| &attr.args) {
-                match arg.as_str() {
+                match arg.name.as_str() {
                     STORAGE_PURITY_READ_NAME => add_impurity(Purity::Reads, Purity::Writes),
                     STORAGE_PURITY_WRITE_NAME => add_impurity(Purity::Writes, Purity::Reads),
                     _otherwise => {
@@ -3710,7 +3710,18 @@ fn item_attrs_to_map(
             let args = attr
                 .args
                 .as_ref()
-                .map(|parens| parens.get().into_iter().cloned().collect())
+                .map(|parens| {
+                    parens
+                        .get()
+                        .into_iter()
+                        .cloned()
+                        .map(|arg| AttributeArg {
+                            name: arg.name.clone(),
+                            value: arg.value.clone(),
+                            span: arg.span(),
+                        })
+                        .collect()
+                })
                 .unwrap_or_else(Vec::new);
 
             let attribute = Attribute {

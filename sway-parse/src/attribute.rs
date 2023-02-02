@@ -1,9 +1,9 @@
 use crate::priv_prelude::{Peek, Peeker};
 use crate::{Parse, ParseBracket, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
-use sway_ast::attribute::{Annotated, Attribute, AttributeDecl, AttributeHashKind};
+use sway_ast::attribute::{Annotated, Attribute, AttributeArg, AttributeDecl, AttributeHashKind};
 use sway_ast::brackets::{Parens, SquareBrackets};
-use sway_ast::keywords::{HashBangToken, HashToken, StorageToken, Token};
+use sway_ast::keywords::{EqToken, HashBangToken, HashToken, StorageToken, Token};
 use sway_ast::punctuated::Punctuated;
 use sway_ast::token::{DocComment, DocStyle};
 use sway_error::parser_error::ParseErrorKind;
@@ -37,7 +37,7 @@ impl<T: Parse> Parse for Annotated<T> {
             let doc_comment = parser.parse::<DocComment>()?;
             // TODO: Use a Literal instead of an Ident when Attribute args
             // start supporting them and remove `Ident::new_no_trim`.
-            let value = Ident::new_no_trim(doc_comment.content_span.clone());
+            let name = Ident::new_no_trim(doc_comment.content_span.clone());
             attribute_list.push(AttributeDecl {
                 hash_kind: AttributeHashKind::Outer(HashToken::new(doc_comment.span.clone())),
                 attribute: SquareBrackets::new(
@@ -47,7 +47,7 @@ impl<T: Parse> Parse for Annotated<T> {
                             doc_comment.span.clone(),
                         ),
                         args: Some(Parens::new(
-                            Punctuated::single(value),
+                            Punctuated::single(AttributeArg { name, value: None }),
                             doc_comment.content_span,
                         )),
                     }),
@@ -86,6 +86,22 @@ impl Parse for AttributeHashKind {
                 Some(hash_token) => Ok(AttributeHashKind::Outer(hash_token)),
                 None => Err(parser.emit_error(ParseErrorKind::ExpectedAnAttribute)),
             },
+        }
+    }
+}
+
+impl Parse for AttributeArg {
+    fn parse(parser: &mut Parser) -> ParseResult<Self> {
+        let name = parser.parse()?;
+        match parser.take::<EqToken>() {
+            Some(_) => {
+                let value = parser.parse()?;
+                Ok(AttributeArg {
+                    name,
+                    value: Some(value),
+                })
+            }
+            None => Ok(AttributeArg { name, value: None }),
         }
     }
 }
