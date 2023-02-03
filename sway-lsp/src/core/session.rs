@@ -3,7 +3,7 @@ use crate::{
         self,
         diagnostic::{get_diagnostics, Diagnostics},
         formatting::get_page_text_edit,
-        runnable::{Runnable, RunnableType},
+        runnable::{Runnable, RunnableMainFn, RunnableTestFn},
     },
     core::{
         document::TextDocument, sync::SyncWorkspace, token::get_range_from_span,
@@ -16,7 +16,7 @@ use crate::{
     },
 };
 use dashmap::DashMap;
-use forc_pkg::{self as pkg};
+use forc_pkg as pkg;
 use parking_lot::RwLock;
 use pkg::{manifest::ManifestFile, Programs};
 use std::{fs::File, io::Write, path::PathBuf, sync::Arc, vec};
@@ -27,9 +27,9 @@ use sway_core::{
         parsed::{AstNode, ParseProgram},
         ty,
     },
-    BuildTarget, CompileResult, Engines, TypeEngine,
+    namespace, BuildTarget, CompileResult, Engines, TypeEngine,
 };
-use sway_types::Spanned;
+use sway_types::{Span, Spanned};
 use sway_utils::helpers::get_sway_files;
 use tower_lsp::lsp_types::{
     CompletionItem, GotoDefinitionResponse, Location, Position, Range, SymbolInformation,
@@ -54,7 +54,7 @@ pub struct CompiledProgram {
 pub struct Session {
     token_map: TokenMap,
     pub documents: Documents,
-    pub runnables: DashMap<RunnableType, Runnable>,
+    pub runnables: DashMap<Span, Box<dyn Runnable>>,
     pub compiled_program: RwLock<CompiledProgram>,
     pub type_engine: RwLock<TypeEngine>,
     pub decl_engine: RwLock<DeclEngine>,
@@ -187,7 +187,9 @@ impl Session {
                 self.create_runnables(typed_program);
 
                 let typed_tree = TypedTree::new(engines, &self.token_map);
-                self.parse_ast_to_typed_tokens(typed_program, |an| typed_tree.traverse_node(an));
+                self.parse_ast_to_typed_tokens(typed_program, |node, namespace| {
+                    typed_tree.traverse_node(node, namespace)
+                });
 
                 self.save_lexed_program(lexed.to_owned().clone());
                 self.save_parsed_program(parsed.to_owned().clone());
@@ -199,8 +201,8 @@ impl Session {
                 let dependency = Dependency::new(&self.token_map);
                 self.parse_ast_to_tokens(&parsed, |an| dependency.collect_parsed_declaration(an));
 
-                self.parse_ast_to_typed_tokens(typed_program, |an| {
-                    dependency.collect_typed_declaration(decl_engine, an)
+                self.parse_ast_to_typed_tokens(typed_program, |node, _module| {
+                    dependency.collect_typed_declaration(decl_engine, node)
                 });
             }
         }
@@ -346,15 +348,31 @@ impl Session {
     }
 
     /// Parse the [ty::TyProgram] AST to populate the [TokenMap] with typed AST nodes.
-    fn parse_ast_to_typed_tokens(&self, typed_program: &ty::TyProgram, f: impl Fn(&ty::TyAstNode)) {
-        let root_nodes = typed_program.root.all_nodes.iter();
+    fn parse_ast_to_typed_tokens(
+        &self,
+        typed_program: &ty::TyProgram,
+        f: impl Fn(&ty::TyAstNode, &namespace::Module),
+    ) {
+        let root_nodes = typed_program
+            .root
+            .all_nodes
+            .iter()
+            .map(|node| (node, &typed_program.root.namespace));
         let sub_nodes = typed_program
             .root
             .submodules
             .iter()
-            .flat_map(|(_, submodule)| &submodule.module.all_nodes);
+            .flat_map(|(_, submodule)| {
+                submodule
+                    .module
+                    .all_nodes
+                    .iter()
+                    .map(|node| (node, &submodule.module.namespace))
+            });
 
-        root_nodes.chain(sub_nodes).for_each(f);
+        root_nodes
+            .chain(sub_nodes)
+            .for_each(|(node, namespace)| f(node, namespace));
     }
 
     /// Get a reference to the [ty::TyProgram] AST.
@@ -372,13 +390,33 @@ impl Session {
 
     /// Create runnables if the `TyProgramKind` of the `TyProgram` is a script.
     fn create_runnables(&self, typed_program: &ty::TyProgram) {
+        // Insert runnable test functions.
+        let decl_engine = &*self.decl_engine.read();
+        for (decl, _) in typed_program.test_fns(decl_engine) {
+            // Get the span of the first attribute if it exists, otherwise use the span of the function name.
+            let span = decl
+                .attributes
+                .first()
+                .map_or_else(|| decl.name.span(), |(_, attr)| attr.span.clone());
+            let runnable = Box::new(RunnableTestFn {
+                span,
+                tree_type: typed_program.kind.tree_type(),
+                test_name: Some(decl.name.to_string()),
+            });
+            self.runnables.insert(runnable.span().clone(), runnable);
+        }
+
+        // Insert runnable main function if the program is a script.
         if let ty::TyProgramKind::Script {
             ref main_function, ..
         } = typed_program.kind
         {
-            let main_fn_location = get_range_from_span(&main_function.name.span());
-            let runnable = Runnable::new(main_fn_location, typed_program.kind.tree_type());
-            self.runnables.insert(RunnableType::MainFn, runnable);
+            let span = main_function.name.span();
+            let runnable = Box::new(RunnableMainFn {
+                span,
+                tree_type: typed_program.kind.tree_type(),
+            });
+            self.runnables.insert(runnable.span().clone(), runnable);
         }
     }
 
