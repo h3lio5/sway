@@ -236,6 +236,7 @@ impl<'eng> FnCompiler<'eng> {
                 function_decl_id,
                 self_state_idx,
                 selector,
+                type_binding: _,
             } => {
                 if let Some(metadata) = selector {
                     self.compile_contract_call(
@@ -286,7 +287,14 @@ impl<'eng> FnCompiler<'eng> {
                 condition,
                 then,
                 r#else,
-            } => self.compile_if(context, md_mgr, condition, then, r#else.as_deref()),
+            } => self.compile_if(
+                context,
+                md_mgr,
+                condition,
+                then,
+                r#else.as_deref(),
+                ast_expr.return_type,
+            ),
             ty::TyExpressionVariant::AsmExpression {
                 registers,
                 body,
@@ -584,6 +592,20 @@ impl<'eng> FnCompiler<'eng> {
                     .current_block
                     .ins(context)
                     .addr_of(value)
+                    .add_metadatum(context, span_md_idx))
+            }
+            Intrinsic::StateClear => {
+                let key_exp = arguments[0].clone();
+                let number_of_slots_exp = arguments[1].clone();
+                let key_value = self.compile_expression(context, md_mgr, &key_exp)?;
+                let number_of_slots_value =
+                    self.compile_expression(context, md_mgr, &number_of_slots_exp)?;
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+                let key_var = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
+                Ok(self
+                    .current_block
+                    .ins(context)
+                    .state_clear(key_var, number_of_slots_value)
                     .add_metadatum(context, span_md_idx))
             }
             Intrinsic::StateLoadWord => {
@@ -1319,6 +1341,7 @@ impl<'eng> FnCompiler<'eng> {
         ast_condition: &ty::TyExpression,
         ast_then: &ty::TyExpression,
         ast_else: Option<&ty::TyExpression>,
+        return_type: TypeId,
     ) -> Result<Value, CompileError> {
         // Compile the condition expression in the entry block.  Then save the current block so we
         // can jump to the true and false blocks after we've created them.
@@ -1366,17 +1389,12 @@ impl<'eng> FnCompiler<'eng> {
             )
             .add_metadatum(context, cond_span_md_idx);
 
+        let return_type = convert_resolved_typeid_no_span(self.type_engine, context, &return_type)
+            .unwrap_or_else(|_| Type::get_unit(context));
         let merge_block = self.function.create_block(context, None);
         // Add a single argument to merge_block that merges true_value and false_value.
-        let merge_val_arg_idx = merge_block.new_arg(
-            context,
-            true_value.get_type(context).unwrap_or_else(|| {
-                false_value
-                    .get_type(context)
-                    .unwrap_or_else(|| Type::get_unit(context))
-            }),
-            false,
-        );
+        // Rely on the type of the ast node when creating that argument
+        let merge_val_arg_idx = merge_block.new_arg(context, return_type, false);
         if !true_block_end.is_terminated(context) {
             true_block_end
                 .ins(context)
@@ -1623,7 +1641,7 @@ impl<'eng> FnCompiler<'eng> {
                 .type_engine
                 .to_typeinfo(body.return_type, &body.span)
                 .map_err(|ty_err| {
-                    CompileError::InternalOwned(format!("{:?}", ty_err), body.span.clone())
+                    CompileError::InternalOwned(format!("{ty_err:?}"), body.span.clone())
                 })?,
             TypeInfo::ContractCaller { .. }
         ) {
@@ -2413,7 +2431,7 @@ impl<'eng> FnCompiler<'eng> {
                 // New name for the key
                 let mut key_name = format!("{}{}", "key_for_", ix.to_usize());
                 for ix in indices {
-                    key_name = format!("{}_{}", key_name, ix);
+                    key_name = format!("{key_name}_{ix}");
                 }
                 let alias_key_name = self.lexical_map.insert(key_name.as_str().to_owned());
 
@@ -2522,7 +2540,7 @@ impl<'eng> FnCompiler<'eng> {
                 // New name for the key
                 let mut key_name = format!("{}{}", "key_for_", ix.to_usize());
                 for ix in indices {
-                    key_name = format!("{}_{}", key_name, ix);
+                    key_name = format!("{key_name}_{ix}");
                 }
                 let alias_key_name = self.lexical_map.insert(key_name.as_str().to_owned());
 
@@ -2645,7 +2663,7 @@ impl<'eng> FnCompiler<'eng> {
         // First, create a name for the value to load from or store to
         let mut value_name = format!("{}{}", "val_for_", ix.to_usize());
         for ix in indices {
-            value_name = format!("{}_{}", value_name, ix);
+            value_name = format!("{value_name}_{ix}");
         }
         let alias_value_name = self.lexical_map.insert(value_name.as_str().to_owned());
 
@@ -2683,7 +2701,7 @@ impl<'eng> FnCompiler<'eng> {
         // First, create a name for the value to load from or store to
         let mut value_name = format!("{}{}", "val_for_", ix.to_usize());
         for ix in indices {
-            value_name = format!("{}_{}", value_name, ix);
+            value_name = format!("{value_name}_{ix}");
         }
         let alias_value_name = self.lexical_map.insert(value_name.as_str().to_owned());
 

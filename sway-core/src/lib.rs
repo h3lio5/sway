@@ -1,6 +1,7 @@
 #[macro_use]
 pub mod error;
 
+pub mod abi_generation;
 pub mod asm_generation;
 mod asm_lang;
 mod build_config;
@@ -170,6 +171,7 @@ fn parse_submodules(
             let parse_submodule = parsed::ParseSubmodule {
                 library_name: library_name.clone(),
                 module: parse_module,
+                dependency_path_span: dep.path.span(),
             };
             let lexed_submodule = lexed::LexedSubmodule {
                 library_name,
@@ -579,7 +581,7 @@ pub fn inline_function_calls(
         // For now, pending improvements to ASMgen for calls, we must inline any function which has
         // too many args.
         if func.args_iter(ctx).count() as u8
-            > crate::asm_generation::compiler_constants::NUM_ARG_REGISTERS
+            > crate::asm_generation::fuel::compiler_constants::NUM_ARG_REGISTERS
         {
             return true;
         }

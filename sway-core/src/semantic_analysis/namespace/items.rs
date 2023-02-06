@@ -148,7 +148,10 @@ impl Items {
     pub(crate) fn check_symbol(&self, name: &Ident) -> Result<&ty::TyDeclaration, CompileError> {
         self.symbols
             .get(name)
-            .ok_or_else(|| CompileError::SymbolNotFound { name: name.clone() })
+            .ok_or_else(|| CompileError::SymbolNotFound {
+                name: name.clone(),
+                span: name.span(),
+            })
     }
 
     pub(crate) fn insert_trait_implementation_for_type(
@@ -216,6 +219,7 @@ impl Items {
             None => {
                 errors.push(CompileError::UnknownVariable {
                     var_name: base_name.clone(),
+                    span: base_name.span(),
                 });
                 return err(warnings, errors);
             }
@@ -241,7 +245,7 @@ impl Items {
             match (resolved_type, projection) {
                 (
                     TypeInfo::Struct {
-                        name: struct_name,
+                        call_path: struct_name,
                         fields,
                         ..
                     },
@@ -273,8 +277,9 @@ impl Items {
 
                             errors.push(CompileError::FieldNotFound {
                                 field_name: field_name.clone(),
-                                struct_name,
+                                struct_name: struct_name.suffix,
                                 available_fields: available_fields.join(", "),
+                                span: field_name.span(),
                             });
                             return err(warnings, errors);
                         }

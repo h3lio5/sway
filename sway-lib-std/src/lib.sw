@@ -1,13 +1,13 @@
 library std;
 
-dep convert;
-dep intrinsics;
 dep error_signals;
 dep logging;
 dep revert;
-dep assert;
 dep result;
 dep option;
+dep convert;
+dep intrinsics;
+dep assert;
 dep alloc;
 dep contract_id;
 dep constants;
@@ -22,6 +22,7 @@ dep address;
 dep identity;
 dep vec;
 dep bytes;
+dep b256;
 dep tx;
 dep inputs;
 dep outputs;

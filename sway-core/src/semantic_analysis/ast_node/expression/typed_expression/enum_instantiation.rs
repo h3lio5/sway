@@ -1,6 +1,6 @@
 use crate::{
     error::*,
-    language::{parsed::*, ty},
+    language::{parsed::*, ty, CallPath},
     semantic_analysis::*,
     type_system::*,
 };
@@ -17,6 +17,7 @@ pub(crate) fn instantiate_enum(
     enum_name: Ident,
     enum_variant_name: Ident,
     args_opt: Option<Vec<Expression>>,
+    call_path_binding: TypeBinding<CallPath>,
     span: &Span,
 ) -> CompileResult<ty::TyExpression> {
     let mut warnings = vec![];
@@ -58,8 +59,9 @@ pub(crate) fn instantiate_enum(
                     contents: None,
                     enum_decl,
                     variant_name: enum_variant.name,
-                    enum_instantiation_span: enum_name.span(),
+                    enum_instantiation_span: call_path_binding.inner.suffix.span(),
                     variant_instantiation_span: enum_variant_name.span(),
+                    call_path_binding,
                 },
                 span: enum_variant_name.span(),
             },
@@ -105,6 +107,7 @@ pub(crate) fn instantiate_enum(
                         variant_name: enum_variant.name,
                         enum_instantiation_span: enum_name.span(),
                         variant_instantiation_span: enum_variant_name.span(),
+                        call_path_binding,
                     },
                     span: enum_variant_name.span(),
                 },
