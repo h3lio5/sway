@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-89FEFD196AFA60D6'
+
+[[package]]
+name = 'self_in_contract'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-89FEFD196AFA60D6'
+dependencies = ['core']
