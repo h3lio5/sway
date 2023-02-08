@@ -319,9 +319,9 @@ impl TypeSubstMap {
         let decl_engine = engines.de();
         let type_info = type_engine.get(type_id);
         match type_info {
-            TypeInfo::Custom { .. } => iter_for_match(engines, self, &type_info),
-            TypeInfo::UnknownGeneric { .. } => iter_for_match(engines, self, &type_info),
-            TypeInfo::Placeholder(_) => iter_for_match(engines, self, &type_info),
+            TypeInfo::Custom { .. } => iter_for_match(type_engine, self, &type_info),
+            TypeInfo::UnknownGeneric { .. } => iter_for_match(type_engine, self, &type_info),
+            TypeInfo::Placeholder(_) => iter_for_match(type_engine, self, &type_info),
             TypeInfo::Struct {
                 fields,
                 call_path,
@@ -463,13 +463,12 @@ impl TypeSubstMap {
 }
 
 fn iter_for_match(
-    engines: Engines<'_>,
+    type_engine: &TypeEngine,
     type_mapping: &TypeSubstMap,
     type_info: &TypeInfo,
 ) -> Option<TypeId> {
-    let type_engine = engines.te();
     for (source_type, dest_type) in type_mapping.mapping.iter() {
-        if type_engine.get(*source_type).eq(type_info, engines) {
+        if type_engine.get(*source_type).eq(type_info, type_engine) {
             return Some(*dest_type);
         }
     }

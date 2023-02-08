@@ -12,8 +12,8 @@ pub struct TyCodeBlock {
 
 impl EqWithEngines for TyCodeBlock {}
 impl PartialEqWithEngines for TyCodeBlock {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.contents.eq(&other.contents, engines)
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+        self.contents.eq(&other.contents, type_engine)
     }
 }
 

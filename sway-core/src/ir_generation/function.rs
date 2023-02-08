@@ -652,7 +652,7 @@ impl<'eng> FnCompiler<'eng> {
                 // Validate that the val_exp is of the right type. We couldn't do it
                 // earlier during type checking as the type arguments may not have been resolved.
                 let val_ty = self.type_engine.to_typeinfo(val_exp.return_type, &span)?;
-                if !val_ty.eq(&TypeInfo::RawUntypedPtr, engines) {
+                if !val_ty.eq(&TypeInfo::RawUntypedPtr, self.type_engine) {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span,

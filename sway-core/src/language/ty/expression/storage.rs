@@ -2,7 +2,7 @@ use std::hash::{Hash, Hasher};
 
 use sway_types::{state::StateIndex, Ident, Span, Spanned};
 
-use crate::{engine_threading::*, type_system::TypeId};
+use crate::{engine_threading::*, type_system::TypeId, TypeEngine};
 
 /// Describes the full storage access including all the subfields
 #[derive(Clone, Debug)]
@@ -13,10 +13,10 @@ pub struct TyStorageAccess {
 
 impl EqWithEngines for TyStorageAccess {}
 impl PartialEqWithEngines for TyStorageAccess {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.ix == other.ix
             && self.fields.len() == other.fields.len()
-            && self.fields.eq(&other.fields, engines)
+            && self.fields.eq(&other.fields, type_engine)
     }
 }
 
@@ -54,12 +54,11 @@ pub struct TyStorageAccessDescriptor {
 
 impl EqWithEngines for TyStorageAccessDescriptor {}
 impl PartialEqWithEngines for TyStorageAccessDescriptor {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let type_engine = engines.te();
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
             && type_engine
                 .get(self.type_id)
-                .eq(&type_engine.get(other.type_id), engines)
+                .eq(&type_engine.get(other.type_id), type_engine)
     }
 }
 

@@ -47,7 +47,7 @@ impl<'a> Unifier<'a> {
             received,
             received_type_info,
             expected_type_info,
-            self.engines,
+            self.engines.te(),
         ) {
             None => (vec![], vec![]),
             Some(_) => self.unify(received, expected, span),
@@ -67,7 +67,7 @@ impl<'a> Unifier<'a> {
             expected,
             expected_type_info,
             received_type_info,
-            self.engines,
+            self.engines.te(),
         ) {
             None => (vec![], vec![]),
             Some(_) => self.unify(received, expected, span),
@@ -198,7 +198,7 @@ impl<'a> Unifier<'a> {
                 )
             }
             (ref r @ TypeInfo::ContractCaller { .. }, ref e @ TypeInfo::ContractCaller { .. })
-                if r.eq(e, self.engines) =>
+                if r.eq(e, self.engines.te()) =>
             {
                 // if they are the same, then it's ok
                 (vec![], vec![])
@@ -237,7 +237,7 @@ impl<'a> Unifier<'a> {
                     name: en,
                     trait_constraints: etc,
                 },
-            ) if rn.as_str() == en.as_str() && rtc.eq(&etc, self.engines) => (vec![], vec![]),
+            ) if rn.as_str() == en.as_str() && rtc.eq(&etc, self.engines.te()) => (vec![], vec![]),
             (r @ UnknownGeneric { .. }, e) if !self.occurs_check(r.clone(), &e, span) => {
                 self.replace_received_with_expected(received, expected, &r, e, span)
             }

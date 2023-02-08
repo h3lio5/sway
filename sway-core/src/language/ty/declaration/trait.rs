@@ -24,12 +24,12 @@ pub struct TyTraitDeclaration {
 
 impl EqWithEngines for TyTraitDeclaration {}
 impl PartialEqWithEngines for TyTraitDeclaration {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
-            && self.type_parameters.eq(&other.type_parameters, engines)
-            && self.interface_surface.eq(&other.interface_surface, engines)
-            && self.methods.eq(&other.methods, engines)
-            && self.supertraits.eq(&other.supertraits, engines)
+            && self.type_parameters.eq(&other.type_parameters, type_engine)
+            && self.interface_surface == other.interface_surface
+            && self.methods == other.methods
+            && self.supertraits == other.supertraits
             && self.visibility == other.visibility
     }
 }
@@ -50,9 +50,9 @@ impl HashWithEngines for TyTraitDeclaration {
         } = self;
         name.hash(state);
         type_parameters.hash(state, engines);
-        interface_surface.hash(state, engines);
-        methods.hash(state, engines);
-        supertraits.hash(state, engines);
+        interface_surface.hash(state);
+        methods.hash(state);
+        supertraits.hash(state);
         visibility.hash(state);
     }
 }

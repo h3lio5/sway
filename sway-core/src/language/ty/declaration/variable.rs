@@ -15,15 +15,14 @@ pub struct TyVariableDeclaration {
 
 impl EqWithEngines for TyVariableDeclaration {}
 impl PartialEqWithEngines for TyVariableDeclaration {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let type_engine = engines.te();
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
-            && self.body.eq(&other.body, engines)
+            && self.body.eq(&other.body, type_engine)
             && self.mutability == other.mutability
             && type_engine
                 .get(self.return_type)
-                .eq(&type_engine.get(other.return_type), engines)
-            && self.type_ascription.eq(&other.type_ascription, engines)
+                .eq(&type_engine.get(other.return_type), type_engine)
+            && self.type_ascription.eq(&other.type_ascription, type_engine)
     }
 }
 

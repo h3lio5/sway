@@ -14,17 +14,16 @@ pub struct TyAbiDeclaration {
     pub attributes: transform::AttributesMap,
 }
 
-impl EqWithEngines for TyAbiDeclaration {}
-impl PartialEqWithEngines for TyAbiDeclaration {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+impl PartialEq for TyAbiDeclaration {
+    fn eq(&self, other: &Self) -> bool {
         self.name == other.name
-            && self.interface_surface.eq(&other.interface_surface, engines)
-            && self.methods.eq(&other.methods, engines)
+            && self.interface_surface == other.interface_surface
+            && self.methods == other.methods
     }
 }
 
-impl HashWithEngines for TyAbiDeclaration {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+impl Hash for TyAbiDeclaration {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         let TyAbiDeclaration {
             name,
             interface_surface,
@@ -35,8 +34,8 @@ impl HashWithEngines for TyAbiDeclaration {
             span: _,
         } = self;
         name.hash(state);
-        interface_surface.hash(state, engines);
-        methods.hash(state, engines);
+        interface_surface.hash(state);
+        methods.hash(state);
     }
 }
 

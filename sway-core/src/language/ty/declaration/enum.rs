@@ -23,10 +23,10 @@ pub struct TyEnumDeclaration {
 
 impl EqWithEngines for TyEnumDeclaration {}
 impl PartialEqWithEngines for TyEnumDeclaration {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.call_path.suffix == other.call_path.suffix
-            && self.type_parameters.eq(&other.type_parameters, engines)
-            && self.variants.eq(&other.variants, engines)
+            && self.type_parameters.eq(&other.type_parameters, type_engine)
+            && self.variants.eq(&other.variants, type_engine)
             && self.visibility == other.visibility
     }
 }
@@ -147,9 +147,9 @@ impl HashWithEngines for TyEnumVariant {
 
 impl EqWithEngines for TyEnumVariant {}
 impl PartialEqWithEngines for TyEnumVariant {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
-            && self.type_argument.eq(&other.type_argument, engines)
+            && self.type_argument.eq(&other.type_argument, type_engine)
             && self.tag == other.tag
     }
 }

@@ -23,10 +23,10 @@ pub struct TyStructDeclaration {
 
 impl EqWithEngines for TyStructDeclaration {}
 impl PartialEqWithEngines for TyStructDeclaration {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.call_path.suffix == other.call_path.suffix
-            && self.fields.eq(&other.fields, engines)
-            && self.type_parameters.eq(&other.type_parameters, engines)
+            && self.fields.eq(&other.fields, type_engine)
+            && self.type_parameters.eq(&other.type_parameters, type_engine)
             && self.visibility == other.visibility
     }
 }
@@ -156,8 +156,8 @@ impl HashWithEngines for TyStructField {
 
 impl EqWithEngines for TyStructField {}
 impl PartialEqWithEngines for TyStructField {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.name == other.name && self.type_argument.eq(&other.type_argument, engines)
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+        self.name == other.name && self.type_argument.eq(&other.type_argument, type_engine)
     }
 }
 

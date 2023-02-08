@@ -34,12 +34,12 @@ pub struct TyFunctionDeclaration {
 
 impl EqWithEngines for TyFunctionDeclaration {}
 impl PartialEqWithEngines for TyFunctionDeclaration {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
-            && self.body.eq(&other.body, engines)
-            && self.parameters.eq(&other.parameters, engines)
-            && self.return_type.eq(&other.return_type, engines)
-            && self.type_parameters.eq(&other.type_parameters, engines)
+            && self.body.eq(&other.body, type_engine)
+            && self.parameters.eq(&other.parameters, type_engine)
+            && self.return_type.eq(&other.return_type, type_engine)
+            && self.type_parameters.eq(&other.type_parameters, type_engine)
             && self.visibility == other.visibility
             && self.is_contract_call == other.is_contract_call
             && self.purity == other.purity
@@ -134,7 +134,7 @@ impl UnconstrainedTypeParameters for TyFunctionDeclaration {
             .type_parameters
             .iter()
             .map(|type_param| type_engine.get(type_param.type_id))
-            .any(|x| x.eq(&type_parameter_info, engines))
+            .any(|x| x.eq(&type_parameter_info, type_engine))
         {
             return false;
         }
@@ -142,13 +142,13 @@ impl UnconstrainedTypeParameters for TyFunctionDeclaration {
             .parameters
             .iter()
             .map(|param| type_engine.get(param.type_argument.type_id))
-            .any(|x| x.eq(&type_parameter_info, engines))
+            .any(|x| x.eq(&type_parameter_info, type_engine))
         {
             return true;
         }
         if type_engine
             .get(self.return_type.type_id)
-            .eq(&type_parameter_info, engines)
+            .eq(&type_parameter_info, type_engine)
         {
             return true;
         }
@@ -349,10 +349,9 @@ pub struct TyFunctionParameter {
 
 impl EqWithEngines for TyFunctionParameter {}
 impl PartialEqWithEngines for TyFunctionParameter {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
-            && self.type_argument.eq(&other.type_argument, engines)
-            && self.is_reference == other.is_reference
+            && self.type_argument.eq(&other.type_argument, type_engine)
             && self.is_mutable == other.is_mutable
     }
 }

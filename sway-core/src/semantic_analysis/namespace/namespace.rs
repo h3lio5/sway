@@ -274,7 +274,7 @@ impl Namespace {
         if !args_buf
             .get(0)
             .map(|x| type_engine.get(x.return_type))
-            .eq(&Some(TypeInfo::ErrorRecovery), engines)
+            .eq(&Some(TypeInfo::ErrorRecovery), type_engine)
         {
             errors.push(CompileError::MethodNotFound {
                 method_name: method_name.clone(),

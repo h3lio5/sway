@@ -335,10 +335,10 @@ fn const_eval_typed_expr(
             let mut element_iter = element_typs.iter();
             let element_type_id = *element_iter.next().unwrap();
             if !element_iter.all(|tid| {
-                lookup.type_engine.get(*tid).eq(
-                    &lookup.type_engine.get(element_type_id),
-                    Engines::new(lookup.type_engine, lookup.decl_engine),
-                )
+                lookup
+                    .type_engine
+                    .get(*tid)
+                    .eq(&lookup.type_engine.get(element_type_id), lookup.type_engine)
             }) {
                 // This shouldn't happen if the type checker did its job.
                 return Ok(None);

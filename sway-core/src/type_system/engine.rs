@@ -50,7 +50,7 @@ impl TypeEngine {
 
         let raw_entry = id_map
             .raw_entry_mut()
-            .from_hash(ty_hash, |x| x.eq(&ty, engines));
+            .from_hash(ty_hash, |x| x.eq(&ty, self));
         match raw_entry {
             RawEntryMut::Occupied(o) => return *o.get(),
             RawEntryMut::Vacant(_) if ty.can_change() => TypeId::new(self.slab.insert(ty)),
@@ -73,13 +73,8 @@ impl TypeEngine {
     }
 
     /// Checks if the given [TypeInfo] is a storage only type.
-    pub(crate) fn is_type_info_storage_only(
-        &self,
-        decl_engine: &DeclEngine,
-        ti: &TypeInfo,
-    ) -> bool {
-        self.storage_only_types
-            .exists(|x| ti.is_subset_of(x, Engines::new(self, decl_engine)))
+    pub(crate) fn is_type_info_storage_only(&self, ti: &TypeInfo) -> bool {
+        self.storage_only_types.exists(|x| ti.is_subset_of(x, self))
     }
 
     /// Given a `value` of type `T` that is able to be monomorphized and a set
@@ -249,7 +244,7 @@ impl TypeEngine {
         err_override: Option<CompileError>,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         let engines = Engines::new(self, decl_engine);
-        if !UnifyCheck::new(engines).check(received, expected) {
+        if !UnifyCheck::new(self).check(received, expected) {
             // create a "mismatched type" error unless the `err_override`
             // argument has been provided
             let mut errors = vec![];
@@ -335,7 +330,7 @@ impl TypeEngine {
         err_override: Option<CompileError>,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         let engines = Engines::new(self, decl_engine);
-        if !UnifyCheck::new(engines).check(received, expected) {
+        if !UnifyCheck::new(self).check(received, expected) {
             // create a "mismatched type" error unless the `err_override`
             // argument has been provided
             let mut errors = vec![];

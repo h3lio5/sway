@@ -21,14 +21,13 @@ pub struct TyTraitFn {
 
 impl EqWithEngines for TyTraitFn {}
 impl PartialEqWithEngines for TyTraitFn {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let type_engine = engines.te();
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
             && self.purity == other.purity
-            && self.parameters.eq(&other.parameters, engines)
+            && self.parameters.eq(&other.parameters, type_engine)
             && type_engine
                 .get(self.return_type)
-                .eq(&type_engine.get(other.return_type), engines)
+                .eq(&type_engine.get(other.return_type), type_engine)
             && self.attributes == other.attributes
     }
 }

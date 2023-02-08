@@ -10,7 +10,6 @@ use sway_types::{Ident, Span};
 use crate::{
     concurrent_slab::{ConcurrentSlab, ListDisplay},
     decl_engine::*,
-    engine_threading::*,
     language::ty,
 };
 
@@ -36,13 +35,6 @@ impl DeclEngine {
         DeclId: From<&'a T>,
     {
         self.slab.get(*DeclId::from(index))
-    }
-
-    /// This method was added as a weird workaround for a potential Rust
-    /// compiler bug where it is unable to resolve the trait constraints on the
-    /// `get` method above (???)
-    fn get_from_decl_id(&self, index: DeclId) -> DeclWrapper {
-        self.slab.get(*index)
     }
 
     pub(super) fn replace<'a, T>(&self, index: &'a T, wrapper: DeclWrapper)
@@ -74,15 +66,14 @@ impl DeclEngine {
     /// duplicated computation---if the parents of a [DeclRef] have already been
     /// found, we do not find them again.
     #[allow(clippy::map_entry)]
-    pub(crate) fn find_all_parents<'a, T>(&self, engines: Engines<'_>, index: &'a T) -> Vec<DeclId>
+    pub(crate) fn find_all_parents<'a, T>(&self, index: &'a T) -> Vec<DeclId>
     where
         DeclId: From<&'a T>,
     {
-        let index: DeclId = DeclId::from(index);
         let parents = self.parents.read().unwrap();
         let mut acc_parents: HashMap<DeclId, DeclId> = HashMap::new();
         let mut already_checked: HashSet<DeclId> = HashSet::new();
-        let mut left_to_check: VecDeque<DeclId> = VecDeque::from([index]);
+        let mut left_to_check: VecDeque<DeclId> = VecDeque::from([DeclId::from(index)]);
         while let Some(curr) = left_to_check.pop_front() {
             if !already_checked.insert(curr) {
                 continue;
@@ -92,10 +83,7 @@ impl DeclEngine {
                     if !acc_parents.contains_key(curr_parent) {
                         acc_parents.insert(*curr_parent, *curr_parent);
                     }
-                    if !left_to_check.iter().any(|x| {
-                        self.get_from_decl_id(*x)
-                            .eq(&self.get_from_decl_id(*curr_parent), engines)
-                    }) {
+                    if !left_to_check.iter().any(|x| x == curr_parent) {
                         left_to_check.push_back(*curr_parent);
                     }
                 }

@@ -18,8 +18,8 @@ struct TraitSuffix {
     args: Vec<TypeArgument>,
 }
 impl PartialEqWithEngines for TraitSuffix {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.name == other.name && self.args.eq(&other.args, engines)
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+        self.name == other.name && self.args.eq(&other.args, type_engine)
     }
 }
 impl OrdWithEngines for TraitSuffix {
@@ -31,9 +31,9 @@ impl OrdWithEngines for TraitSuffix {
 }
 
 impl<T: PartialEqWithEngines> PartialEqWithEngines for CallPath<T> {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.prefixes == other.prefixes
-            && self.suffix.eq(&other.suffix, engines)
+            && self.suffix.eq(&other.suffix, type_engine)
             && self.is_absolute == other.is_absolute
     }
 }
@@ -157,10 +157,10 @@ impl TraitMap {
 
             let types_are_subset = type_engine
                 .get(type_id)
-                .is_subset_of(&type_engine.get(*map_type_id), engines);
+                .is_subset_of(&type_engine.get(*map_type_id), type_engine);
             let traits_are_subset = type_engine
                 .get(trait_type_id)
-                .is_subset_of(&type_engine.get(map_trait_type_id), engines);
+                .is_subset_of(&type_engine.get(map_trait_type_id), type_engine);
 
             if types_are_subset && traits_are_subset && !is_impl_self {
                 let trait_name_str = format!(
@@ -452,7 +452,7 @@ impl TraitMap {
         let type_engine = engines.te();
         // a curried version of the decider protocol to use in the helper functions
         let decider = |type_info: &TypeInfo, map_type_info: &TypeInfo| {
-            type_info.is_subset_of(map_type_info, engines)
+            type_info.is_subset_of(map_type_info, type_engine)
         };
         let mut all_types = type_engine.get(type_id).extract_inner_types(type_engine);
         all_types.insert(type_id);
@@ -526,8 +526,8 @@ impl TraitMap {
         let type_engine = engines.te();
         // a curried version of the decider protocol to use in the helper functions
         let decider = |type_info: &TypeInfo, map_type_info: &TypeInfo| {
-            type_info.is_subset_of(map_type_info, engines)
-                || map_type_info.is_subset_of_for_item_import(type_info, engines)
+            type_info.is_subset_of(map_type_info, type_engine)
+                || map_type_info.is_subset_of_for_item_import(type_info, type_engine)
         };
         let mut trait_map = self.filter_by_type_inner(engines, vec![type_id], decider);
         let all_types = type_engine
@@ -537,7 +537,7 @@ impl TraitMap {
             .collect::<Vec<_>>();
         // a curried version of the decider protocol to use in the helper functions
         let decider2 = |type_info: &TypeInfo, map_type_info: &TypeInfo| {
-            type_info.is_subset_of(map_type_info, engines)
+            type_info.is_subset_of(map_type_info, type_engine)
         };
         trait_map.extend(
             self.filter_by_type_inner(engines, all_types, decider2),
@@ -624,7 +624,7 @@ impl TraitMap {
         // small performance gain in bad case
         if type_engine
             .get(type_id)
-            .eq(&TypeInfo::ErrorRecovery, engines)
+            .eq(&TypeInfo::ErrorRecovery, type_engine)
         {
             return methods;
         }
@@ -663,7 +663,7 @@ impl TraitMap {
         // small performance gain in bad case
         if type_engine
             .get(type_id)
-            .eq(&TypeInfo::ErrorRecovery, engines)
+            .eq(&TypeInfo::ErrorRecovery, type_engine)
         {
             return methods;
         }
@@ -817,7 +817,7 @@ pub(crate) fn are_equal_minus_dynamic_types(
                 name: en,
                 trait_constraints: etc,
             },
-        ) => rn.as_str() == en.as_str() && rtc.eq(&etc, engines),
+        ) => rn.as_str() == en.as_str() && rtc.eq(&etc, type_engine),
         (TypeInfo::Placeholder(_), TypeInfo::Placeholder(_)) => false,
 
         // these cases may contain dynamic types

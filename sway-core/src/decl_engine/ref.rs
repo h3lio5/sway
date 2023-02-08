@@ -1,4 +1,4 @@
-use std::hash::Hasher;
+use std::hash::{Hash, Hasher};
 
 use sway_types::{Ident, Span, Spanned};
 
@@ -80,21 +80,39 @@ impl DeclRef {
     }
 }
 
-impl EqWithEngines for DeclRef {}
-impl PartialEqWithEngines for DeclRef {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let decl_engine = engines.de();
-        let left = decl_engine.get(self);
-        let right = decl_engine.get(other);
-        self.name == other.name && left.eq(&right, engines)
+impl PartialEq for DeclRef {
+    fn eq(&self, other: &Self) -> bool {
+        let DeclRef {
+            name: ln,
+            id: lid,
+            // these fields are not used in comparison because they aren't
+            // relevant/a reliable source of obj v. obj distinction
+            decl_span: _,
+        } = self;
+        let DeclRef {
+            name: rn,
+            id: rid,
+            // these fields are not used in comparison because they aren't
+            // relevant/a reliable source of obj v. obj distinction
+            decl_span: _,
+        } = other;
+        ln == rn && lid == rid
     }
 }
 
-impl HashWithEngines for DeclRef {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let decl_engine = engines.de();
-        let decl = decl_engine.get(self);
-        decl.hash(state, engines);
+impl Eq for DeclRef {}
+
+impl Hash for DeclRef {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let DeclRef {
+            name,
+            id,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            decl_span: _,
+        } = self;
+        name.hash(state);
+        id.hash(state);
     }
 }
 
@@ -123,19 +141,20 @@ impl ReplaceSelfType for DeclRef {
 }
 
 impl ReplaceDecls for DeclRef {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
-        let decl_engine = engines.de();
-        if let Some(new_decl_ref) = decl_mapping.find_match(self) {
-            self.id = new_decl_ref;
-            return;
-        }
-        let all_parents = decl_engine.find_all_parents(engines, self);
-        for parent in all_parents.iter() {
-            if let Some(new_decl_ref) = decl_mapping.find_match(parent) {
-                self.id = new_decl_ref;
-                return;
-            }
-        }
+    fn replace_decls_inner(&mut self, _decl_mapping: &DeclMapping, _engines: Engines<'_>) {
+        todo!();
+        // let decl_engine = engines.de();
+        // if let Some(new_decl_ref) = decl_mapping.find_match(self) {
+        //     self.id = new_decl_ref;
+        //     return;
+        // }
+        // let all_parents = decl_engine.find_all_parents(engines, self);
+        // for parent in all_parents.iter() {
+        //     if let Some(new_decl_ref) = decl_mapping.find_match(parent) {
+        //         self.id = new_decl_ref;
+        //         return;
+        //     }
+        // }
     }
 }
 

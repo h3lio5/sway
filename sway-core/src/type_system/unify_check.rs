@@ -2,13 +2,13 @@ use crate::{engine_threading::*, type_system::*};
 
 /// Helper struct to aid in type coercion.
 pub(super) struct UnifyCheck<'a> {
-    engines: Engines<'a>,
+    type_engine: &'a TypeEngine,
 }
 
 impl<'a> UnifyCheck<'a> {
     /// Creates a new [UnifyCheck].
-    pub(super) fn new(engines: Engines<'a>) -> UnifyCheck<'a> {
-        UnifyCheck { engines }
+    pub(super) fn new(type_engine: &'a TypeEngine) -> UnifyCheck<'a> {
+        UnifyCheck { type_engine }
     }
 
     /// Given two [TypeId]'s `left` and `right`, check to see if `left` can be
@@ -96,8 +96,8 @@ impl<'a> UnifyCheck<'a> {
             return true;
         }
 
-        let left = self.engines.te().get(left);
-        let right = self.engines.te().get(right);
+        let left = self.type_engine.get(left);
+        let right = self.type_engine.get(right);
         match (left, right) {
             // the placeholder type can be coerced into any type
             (Placeholder(_), _) => true,
@@ -116,7 +116,7 @@ impl<'a> UnifyCheck<'a> {
             ) => {
                 // TODO: this requirement on the trait constraints should be
                 // loosened to match the description above
-                ln == rn && rtc.eq(&ltc, self.engines)
+                ln == rn && rtc.eq(&ltc, self.type_engine)
             }
             // any type can be coerced into generic
             (_, UnknownGeneric { .. }) => true,
@@ -247,7 +247,7 @@ impl<'a> UnifyCheck<'a> {
                     address: ref ea,
                 },
             ) => {
-                r.eq(e, self.engines)
+                r.eq(e, self.type_engine)
                     || (ran == ean && ra.is_none())
                     || matches!(ran, AbiName::Deferred)
                     || (ran == ean && ea.is_none())
@@ -258,7 +258,7 @@ impl<'a> UnifyCheck<'a> {
             (ErrorRecovery, _) => true,
             (_, ErrorRecovery) => true,
 
-            (a, b) => a.eq(&b, self.engines),
+            (a, b) => a.eq(&b, self.type_engine),
         }
     }
 
@@ -351,18 +351,18 @@ impl<'a> UnifyCheck<'a> {
         // invariant 3. The elements of `left` satisfy the constraints of `right`
         let left_types = left
             .iter()
-            .map(|x| self.engines.te().get(*x))
+            .map(|x| self.type_engine.get(*x))
             .collect::<Vec<_>>();
         let right_types = right
             .iter()
-            .map(|x| self.engines.te().get(*x))
+            .map(|x| self.type_engine.get(*x))
             .collect::<Vec<_>>();
         let mut constraints = vec![];
         for i in 0..(right_types.len() - 1) {
             for j in (i + 1)..right_types.len() {
                 let a = right_types.get(i).unwrap();
                 let b = right_types.get(j).unwrap();
-                if a.eq(b, self.engines) {
+                if a.eq(b, self.type_engine) {
                     // if a and b are the same type
                     constraints.push((i, j));
                 }
@@ -374,7 +374,7 @@ impl<'a> UnifyCheck<'a> {
             if matches!(a, Placeholder(_)) || matches!(b, Placeholder(_)) {
                 continue;
             }
-            if !a.eq(b, self.engines) {
+            if !a.eq(b, self.type_engine) {
                 return false;
             }
         }

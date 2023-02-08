@@ -14,8 +14,8 @@ pub struct TyStorageDeclaration {
 
 impl EqWithEngines for TyStorageDeclaration {}
 impl PartialEqWithEngines for TyStorageDeclaration {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.fields.eq(&other.fields, engines) && self.attributes == other.attributes
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+        self.fields.eq(&other.fields, type_engine)
     }
 }
 
@@ -177,10 +177,10 @@ pub struct TyStorageField {
 
 impl EqWithEngines for TyStorageField {}
 impl PartialEqWithEngines for TyStorageField {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
-            && self.type_argument.eq(&other.type_argument, engines)
-            && self.initializer.eq(&other.initializer, engines)
+            && self.type_argument.eq(&other.type_argument, type_engine)
+            && self.initializer.eq(&other.initializer, type_engine)
     }
 }
 

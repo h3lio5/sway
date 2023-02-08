@@ -44,11 +44,10 @@ impl HashWithEngines for TypeArgument {
 
 impl EqWithEngines for TypeArgument {}
 impl PartialEqWithEngines for TypeArgument {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let type_engine = engines.te();
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         type_engine
             .get(self.type_id)
-            .eq(&type_engine.get(other.type_id), engines)
+            .eq(&type_engine.get(other.type_id), type_engine)
     }
 }
 

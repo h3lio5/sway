@@ -182,7 +182,7 @@ impl ty::TyImplTrait {
 
                 if !type_engine
                     .get(implementing_for_type_id)
-                    .eq(&TypeInfo::Contract, engines)
+                    .eq(&TypeInfo::Contract, type_engine)
                 {
                     errors.push(CompileError::ImplAbiForNonContract {
                         span: type_implementing_for_span.clone(),
@@ -854,7 +854,7 @@ fn type_check_impl_method(
 
         if !type_engine.get(impl_method_param.type_argument.type_id).eq(
             &type_engine.get(impl_method_signature_param.type_argument.type_id),
-            engines,
+            type_engine,
         ) {
             errors.push(CompileError::MismatchedTypeInInterfaceSurface {
                 interface_name: interface_name(),
@@ -919,10 +919,10 @@ fn type_check_impl_method(
         (true, true) | (false, false) => (), // no payability mismatch
     }
 
-    if !type_engine
-        .get(impl_method.return_type.type_id)
-        .eq(&type_engine.get(impl_method_signature.return_type), engines)
-    {
+    if !type_engine.get(impl_method.return_type.type_id).eq(
+        &type_engine.get(impl_method_signature.return_type),
+        type_engine,
+    ) {
         errors.push(CompileError::MismatchedTypeInInterfaceSurface {
             interface_name: interface_name(),
             span: impl_method.return_type.span.clone(),

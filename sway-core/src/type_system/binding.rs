@@ -126,10 +126,10 @@ impl Spanned for TypeArgs {
 }
 
 impl PartialEqWithEngines for TypeArgs {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         match (self, other) {
-            (TypeArgs::Regular(vec1), TypeArgs::Regular(vec2)) => vec1.eq(vec2, engines),
-            (TypeArgs::Prefix(vec1), TypeArgs::Prefix(vec2)) => vec1.eq(vec2, engines),
+            (TypeArgs::Regular(vec1), TypeArgs::Regular(vec2)) => vec1.eq(vec2, type_engine),
+            (TypeArgs::Prefix(vec1), TypeArgs::Prefix(vec2)) => vec1.eq(vec2, type_engine),
             _ => false,
         }
     }
@@ -142,8 +142,8 @@ impl<T> Spanned for TypeBinding<T> {
 }
 
 impl PartialEqWithEngines for TypeBinding<()> {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.span == other.span && self.type_arguments.eq(&other.type_arguments, engines)
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+        self.span == other.span && self.type_arguments.eq(&other.type_arguments, type_engine)
     }
 }
 

@@ -1,6 +1,6 @@
 use std::{fmt, sync::RwLock};
 
-use crate::{decl_engine::*, engine_threading::*, type_system::TypeId, TypeInfo};
+use crate::{decl_engine::*, engine_threading::*, type_system::TypeId, TypeEngine, TypeInfo};
 
 #[derive(Debug)]
 pub(crate) struct ConcurrentSlab<T> {
@@ -84,7 +84,7 @@ impl ConcurrentSlab<TypeInfo> {
         index: TypeId,
         prev_value: &TypeInfo,
         new_value: TypeInfo,
-        engines: Engines<'_>,
+        type_engine: &TypeEngine,
     ) -> Option<TypeInfo> {
         let index = index.index();
         // The comparison below ends up calling functions in the slab, which
@@ -95,7 +95,7 @@ impl ConcurrentSlab<TypeInfo> {
         {
             let inner = self.inner.read().unwrap();
             let actual_prev_value = &inner[index];
-            if !actual_prev_value.eq(prev_value, engines) {
+            if !actual_prev_value.eq(prev_value, type_engine) {
                 return Some(actual_prev_value.clone());
             }
         }
