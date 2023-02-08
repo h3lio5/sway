@@ -78,6 +78,7 @@ impl ReplaceSelfType for TypeId {
         fn helper(type_id: TypeId, engines: Engines<'_>, self_type: TypeId) -> Option<TypeId> {
             let type_engine = engines.te();
             match type_engine.get(type_id) {
+                TypeInfo::TypeParam(_) => todo!(),
                 TypeInfo::SelfType => Some(self_type),
                 TypeInfo::Enum {
                     type_parameters,

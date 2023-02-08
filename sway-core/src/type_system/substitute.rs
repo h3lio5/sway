@@ -320,6 +320,7 @@ impl TypeSubstMap {
             TypeInfo::Custom { .. } => iter_for_match(type_engine, self, &type_info),
             TypeInfo::UnknownGeneric { .. } => iter_for_match(type_engine, self, &type_info),
             TypeInfo::Placeholder(_) => iter_for_match(type_engine, self, &type_info),
+            TypeInfo::TypeParam(_) => todo!(),
             TypeInfo::Struct {
                 fields,
                 call_path,
