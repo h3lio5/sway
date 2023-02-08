@@ -26,7 +26,7 @@ pub struct TypeParameter {
 }
 
 impl HashWithEngines for TypeParameter {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         let TypeParameter {
             type_id,
             name_ident,
@@ -36,10 +36,9 @@ impl HashWithEngines for TypeParameter {
             trait_constraints_span: _,
             initial_type_id: _,
         } = self;
-        let type_engine = engines.te();
-        type_engine.get(*type_id).hash(state, engines);
+        type_engine.get(*type_id).hash(state, type_engine);
         name_ident.hash(state);
-        trait_constraints.hash(state, engines);
+        trait_constraints.hash(state, type_engine);
     }
 }
 
@@ -101,7 +100,6 @@ impl TypeParameter {
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
 
         let TypeParameter {
             initial_type_id,
@@ -123,13 +121,10 @@ impl TypeParameter {
 
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
 
-        let type_id = type_engine.insert(
-            decl_engine,
-            TypeInfo::UnknownGeneric {
-                name: name_ident.clone(),
-                trait_constraints: VecSet(trait_constraints.clone()),
-            },
-        );
+        let type_id = type_engine.insert(TypeInfo::UnknownGeneric {
+            name: name_ident.clone(),
+            trait_constraints: VecSet(trait_constraints.clone()),
+        });
 
         // Insert the trait constraints into the namespace.
         for trait_constraint in trait_constraints.iter() {

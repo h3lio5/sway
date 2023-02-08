@@ -32,7 +32,7 @@ impl PartialEqWithEngines for TyEnumDeclaration {
 }
 
 impl HashWithEngines for TyEnumDeclaration {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         let TyEnumDeclaration {
             call_path,
             type_parameters,
@@ -44,8 +44,8 @@ impl HashWithEngines for TyEnumDeclaration {
             attributes: _,
         } = self;
         call_path.suffix.hash(state);
-        variants.hash(state, engines);
-        type_parameters.hash(state, engines);
+        variants.hash(state, type_engine);
+        type_parameters.hash(state, type_engine);
         visibility.hash(state);
     }
 }
@@ -75,15 +75,11 @@ impl ReplaceSelfType for TyEnumDeclaration {
 impl CreateTypeId for TyEnumDeclaration {
     fn create_type_id(&self, engines: Engines<'_>) -> TypeId {
         let type_engine = engines.te();
-        let decl_engine = engines.de();
-        type_engine.insert(
-            decl_engine,
-            TypeInfo::Enum {
-                call_path: self.call_path.clone(),
-                variant_types: self.variants.clone(),
-                type_parameters: self.type_parameters.clone(),
-            },
-        )
+        type_engine.insert(TypeInfo::Enum {
+            call_path: self.call_path.clone(),
+            variant_types: self.variants.clone(),
+            type_parameters: self.type_parameters.clone(),
+        })
     }
 }
 
@@ -138,9 +134,9 @@ pub struct TyEnumVariant {
 }
 
 impl HashWithEngines for TyEnumVariant {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         self.name.hash(state);
-        self.type_argument.hash(state, engines);
+        self.type_argument.hash(state, type_engine);
         self.tag.hash(state);
     }
 }

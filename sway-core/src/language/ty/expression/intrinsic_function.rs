@@ -29,7 +29,7 @@ impl PartialEqWithEngines for TyIntrinsicFunctionKind {
 }
 
 impl HashWithEngines for TyIntrinsicFunctionKind {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         let TyIntrinsicFunctionKind {
             kind,
             arguments,
@@ -39,8 +39,8 @@ impl HashWithEngines for TyIntrinsicFunctionKind {
             span: _,
         } = self;
         kind.hash(state);
-        arguments.hash(state, engines);
-        type_arguments.hash(state, engines);
+        arguments.hash(state, type_engine);
+        type_arguments.hash(state, type_engine);
     }
 }
 

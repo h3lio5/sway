@@ -18,9 +18,9 @@ impl PartialEqWithEngines for TyCodeBlock {
 }
 
 impl HashWithEngines for TyCodeBlock {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         let TyCodeBlock { contents } = self;
-        contents.hash(state, engines);
+        contents.hash(state, type_engine);
     }
 }
 

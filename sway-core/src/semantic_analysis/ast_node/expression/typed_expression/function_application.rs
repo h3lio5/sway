@@ -118,7 +118,6 @@ fn type_check_arguments(
     let mut errors = vec![];
 
     let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
 
     let typed_arguments = arguments
@@ -127,7 +126,7 @@ fn type_check_arguments(
             let ctx = ctx
                 .by_ref()
                 .with_help_text("")
-                .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
+                .with_type_annotation(type_engine.insert(TypeInfo::Unknown));
             check!(
                 ty::TyExpression::type_check(ctx, arg.clone()),
                 ty::TyExpression::error(arg.span(), engines),

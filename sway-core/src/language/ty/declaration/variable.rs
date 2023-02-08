@@ -27,7 +27,7 @@ impl PartialEqWithEngines for TyVariableDeclaration {
 }
 
 impl HashWithEngines for TyVariableDeclaration {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         let TyVariableDeclaration {
             name,
             body,
@@ -35,11 +35,10 @@ impl HashWithEngines for TyVariableDeclaration {
             return_type,
             type_ascription,
         } = self;
-        let type_engine = engines.te();
         name.hash(state);
-        body.hash(state, engines);
-        type_engine.get(*return_type).hash(state, engines);
-        type_ascription.hash(state, engines);
+        body.hash(state, type_engine);
+        type_engine.get(*return_type).hash(state, type_engine);
+        type_ascription.hash(state, type_engine);
         mutability.hash(state);
     }
 }

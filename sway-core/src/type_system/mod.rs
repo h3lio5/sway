@@ -52,23 +52,17 @@ fn generic_enum_resolution() {
         a: _
     }
     */
-    let generic_type = type_engine.insert(
-        &decl_engine,
-        TypeInfo::UnknownGeneric {
-            name: generic_name.clone(),
-            trait_constraints: VecSet(Vec::new()),
-        },
-    );
-    let placeholder_type = type_engine.insert(
-        &decl_engine,
-        TypeInfo::Placeholder(TypeParameter {
-            type_id: generic_type,
-            initial_type_id: generic_type,
-            name_ident: generic_name.clone(),
-            trait_constraints: vec![],
-            trait_constraints_span: sp.clone(),
-        }),
-    );
+    let generic_type = type_engine.insert(TypeInfo::UnknownGeneric {
+        name: generic_name.clone(),
+        trait_constraints: VecSet(Vec::new()),
+    });
+    let placeholder_type = type_engine.insert(TypeInfo::Placeholder(TypeParameter {
+        type_id: generic_type,
+        initial_type_id: generic_type,
+        name_ident: generic_name.clone(),
+        trait_constraints: vec![],
+        trait_constraints_span: sp.clone(),
+    }));
     let placeholder_type_param = TypeParameter {
         type_id: placeholder_type,
         initial_type_id: placeholder_type,
@@ -88,21 +82,18 @@ fn generic_enum_resolution() {
         span: sp.clone(),
         attributes: transform::AttributesMap::default(),
     }];
-    let ty_1 = type_engine.insert(
-        &decl_engine,
-        TypeInfo::Enum {
-            call_path: result_name.clone().into(),
-            variant_types,
-            type_parameters: vec![placeholder_type_param],
-        },
-    );
+    let ty_1 = type_engine.insert(TypeInfo::Enum {
+        call_path: result_name.clone().into(),
+        variant_types,
+        type_parameters: vec![placeholder_type_param],
+    });
 
     /*
     Result<bool> {
         a: bool
     }
     */
-    let boolean_type = type_engine.insert(&decl_engine, TypeInfo::Boolean);
+    let boolean_type = type_engine.insert(TypeInfo::Boolean);
     let variant_types = vec![ty::TyEnumVariant {
         name: a_name,
         tag: 0,
@@ -122,14 +113,11 @@ fn generic_enum_resolution() {
         trait_constraints: vec![],
         trait_constraints_span: sp.clone(),
     };
-    let ty_2 = type_engine.insert(
-        &decl_engine,
-        TypeInfo::Enum {
-            call_path: result_name.into(),
-            variant_types,
-            type_parameters: vec![type_param],
-        },
-    );
+    let ty_2 = type_engine.insert(TypeInfo::Enum {
+        call_path: result_name.into(),
+        variant_types,
+        type_parameters: vec![type_param],
+    });
 
     // Unify them together...
     let (_, errors) = type_engine.unify(&decl_engine, ty_1, ty_2, &sp, "", None);
@@ -159,8 +147,8 @@ fn basic_numeric_unknown() {
 
     let sp = Span::dummy();
     // numerics
-    let id = type_engine.insert(&decl_engine, TypeInfo::Numeric);
-    let id2 = type_engine.insert(&decl_engine, TypeInfo::UnsignedInteger(IntegerBits::Eight));
+    let id = type_engine.insert(TypeInfo::Numeric);
+    let id2 = type_engine.insert(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
     let (_, errors) = type_engine.unify(&decl_engine, id, id2, &sp, "", None);
@@ -180,8 +168,8 @@ fn unify_numerics() {
     let sp = Span::dummy();
 
     // numerics
-    let id = type_engine.insert(&decl_engine, TypeInfo::Numeric);
-    let id2 = type_engine.insert(&decl_engine, TypeInfo::UnsignedInteger(IntegerBits::Eight));
+    let id = type_engine.insert(TypeInfo::Numeric);
+    let id2 = type_engine.insert(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
     let (_, errors) = type_engine.unify(&decl_engine, id2, id, &sp, "", None);
@@ -201,8 +189,8 @@ fn unify_numerics_2() {
     let sp = Span::dummy();
 
     // numerics
-    let id = type_engine.insert(&decl_engine, TypeInfo::Numeric);
-    let id2 = type_engine.insert(&decl_engine, TypeInfo::UnsignedInteger(IntegerBits::Eight));
+    let id = type_engine.insert(TypeInfo::Numeric);
+    let id2 = type_engine.insert(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
     let (_, errors) = type_engine.unify(&decl_engine, id, id2, &sp, "", None);

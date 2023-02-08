@@ -32,7 +32,7 @@ impl PartialEqWithEngines for TyStructDeclaration {
 }
 
 impl HashWithEngines for TyStructDeclaration {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         let TyStructDeclaration {
             call_path,
             fields,
@@ -44,8 +44,8 @@ impl HashWithEngines for TyStructDeclaration {
             attributes: _,
         } = self;
         call_path.suffix.hash(state);
-        fields.hash(state, engines);
-        type_parameters.hash(state, engines);
+        fields.hash(state, type_engine);
+        type_parameters.hash(state, type_engine);
         visibility.hash(state);
     }
 }
@@ -75,15 +75,11 @@ impl ReplaceSelfType for TyStructDeclaration {
 impl CreateTypeId for TyStructDeclaration {
     fn create_type_id(&self, engines: Engines<'_>) -> TypeId {
         let type_engine = engines.te();
-        let decl_engine = engines.de();
-        type_engine.insert(
-            decl_engine,
-            TypeInfo::Struct {
-                call_path: self.call_path.clone(),
-                fields: self.fields.clone(),
-                type_parameters: self.type_parameters.clone(),
-            },
-        )
+        type_engine.insert(TypeInfo::Struct {
+            call_path: self.call_path.clone(),
+            fields: self.fields.clone(),
+            type_parameters: self.type_parameters.clone(),
+        })
     }
 }
 
@@ -140,7 +136,7 @@ pub struct TyStructField {
 }
 
 impl HashWithEngines for TyStructField {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         let TyStructField {
             name,
             type_argument,
@@ -150,7 +146,7 @@ impl HashWithEngines for TyStructField {
             attributes: _,
         } = self;
         name.hash(state);
-        type_argument.hash(state, engines);
+        type_argument.hash(state, type_engine);
     }
 }
 

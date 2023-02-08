@@ -71,13 +71,12 @@ impl TypeSubstMap {
         type_parameters: &[TypeParameter],
     ) -> TypeSubstMap {
         let type_engine = engines.te();
-        let decl_engine = engines.de();
         let mapping = type_parameters
             .iter()
             .map(|x| {
                 (
                     x.type_id,
-                    type_engine.insert(decl_engine, TypeInfo::Placeholder(x.clone())),
+                    type_engine.insert(TypeInfo::Placeholder(x.clone())),
                 )
             })
             .collect();
@@ -316,7 +315,6 @@ impl TypeSubstMap {
     /// A match cannot be found in any other circumstance.
     pub(crate) fn find_match(&self, type_id: TypeId, engines: Engines<'_>) -> Option<TypeId> {
         let type_engine = engines.te();
-        let decl_engine = engines.de();
         let type_info = type_engine.get(type_id);
         match type_info {
             TypeInfo::Custom { .. } => iter_for_match(type_engine, self, &type_info),
@@ -350,14 +348,11 @@ impl TypeSubstMap {
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(type_engine.insert(
-                        decl_engine,
-                        TypeInfo::Struct {
-                            fields,
-                            call_path,
-                            type_parameters,
-                        },
-                    ))
+                    Some(type_engine.insert(TypeInfo::Struct {
+                        fields,
+                        call_path,
+                        type_parameters,
+                    }))
                 } else {
                     None
                 }
@@ -391,14 +386,11 @@ impl TypeSubstMap {
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(type_engine.insert(
-                        decl_engine,
-                        TypeInfo::Enum {
-                            variant_types,
-                            type_parameters,
-                            call_path,
-                        },
-                    ))
+                    Some(type_engine.insert(TypeInfo::Enum {
+                        variant_types,
+                        type_parameters,
+                        call_path,
+                    }))
                 } else {
                     None
                 }
@@ -406,7 +398,7 @@ impl TypeSubstMap {
             TypeInfo::Array(mut elem_ty, count) => {
                 self.find_match(elem_ty.type_id, engines).map(|type_id| {
                     elem_ty.type_id = type_id;
-                    type_engine.insert(decl_engine, TypeInfo::Array(elem_ty, count))
+                    type_engine.insert(TypeInfo::Array(elem_ty, count))
                 })
             }
             TypeInfo::Tuple(fields) => {
@@ -422,7 +414,7 @@ impl TypeSubstMap {
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(type_engine.insert(decl_engine, TypeInfo::Tuple(fields)))
+                    Some(type_engine.insert(TypeInfo::Tuple(fields)))
                 } else {
                     None
                 }
@@ -441,7 +433,7 @@ impl TypeSubstMap {
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(type_engine.insert(decl_engine, TypeInfo::Storage { fields }))
+                    Some(type_engine.insert(TypeInfo::Storage { fields }))
                 } else {
                     None
                 }

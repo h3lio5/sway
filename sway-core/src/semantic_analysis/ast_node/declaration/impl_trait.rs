@@ -68,7 +68,7 @@ impl ty::TyImplTrait {
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
             ctx.resolve_type_without_self(
-                type_engine.insert(decl_engine, type_implementing_for),
+                type_engine.insert(type_implementing_for),
                 &type_implementing_for_span,
                 None
             ),
@@ -105,7 +105,7 @@ impl ty::TyImplTrait {
         let mut ctx = ctx
             .with_self_type(implementing_for_type_id)
             .with_help_text("")
-            .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert(TypeInfo::Unknown));
 
         let impl_trait = match ctx
             .namespace
@@ -486,7 +486,7 @@ impl ty::TyImplTrait {
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
             ctx.resolve_type_without_self(
-                type_engine.insert(decl_engine, type_implementing_for),
+                type_engine.insert(type_implementing_for),
                 &type_implementing_for_span,
                 None
             ),
@@ -522,7 +522,7 @@ impl ty::TyImplTrait {
         let mut ctx = ctx
             .with_self_type(implementing_for_type_id)
             .with_help_text("")
-            .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert(TypeInfo::Unknown));
 
         // type check the methods inside of the impl block
         let mut methods = vec![];
@@ -759,14 +759,13 @@ fn type_check_impl_method(
     let mut errors = vec![];
 
     let type_engine = ctx.type_engine;
-    let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
     let self_type = ctx.self_type();
 
     let mut ctx = ctx
         .by_ref()
         .with_help_text("")
-        .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
+        .with_type_annotation(type_engine.insert(TypeInfo::Unknown));
 
     let interface_name = || -> InterfaceName {
         if is_contract {

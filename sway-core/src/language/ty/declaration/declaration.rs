@@ -121,14 +121,12 @@ impl PartialEqWithEngines for TyDeclaration {
 }
 
 impl HashWithEngines for TyDeclaration {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         use TyDeclaration::*;
-        let decl_engine = engines.de();
-        let type_engine = engines.te();
         std::mem::discriminant(self).hash(state);
         match self {
             VariableDeclaration(decl) => {
-                decl.hash(state, engines);
+                decl.hash(state, type_engine);
             }
             ConstantDeclaration { decl_id, .. }
             | FunctionDeclaration { decl_id, .. }
@@ -138,11 +136,11 @@ impl HashWithEngines for TyDeclaration {
             | ImplTrait { decl_id, .. }
             | AbiDeclaration { decl_id, .. }
             | StorageDeclaration { decl_id, .. } => {
-                decl_engine.get(decl_id).hash(state, engines);
+                decl_id.hash(state);
             }
             GenericTypeForFunctionScope { name, type_id } => {
                 name.hash(state);
-                type_engine.get(*type_id).hash(state, engines);
+                type_engine.get(*type_id).hash(state, type_engine);
             }
             ErrorRecovery(_) => {}
         }
@@ -668,12 +666,9 @@ impl TyDeclaration {
                     warnings,
                     errors
                 );
-                type_engine.insert(
-                    decl_engine,
-                    TypeInfo::Storage {
-                        fields: storage_decl.fields_as_typed_struct_fields(),
-                    },
-                )
+                type_engine.insert(TypeInfo::Storage {
+                    fields: storage_decl.fields_as_typed_struct_fields(),
+                })
             }
             TyDeclaration::GenericTypeForFunctionScope { type_id, .. } => *type_id,
             decl => {

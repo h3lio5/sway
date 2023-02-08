@@ -36,7 +36,7 @@ impl ty::TyDeclaration {
                         EnforceTypeArguments::Yes,
                         None
                     ),
-                    type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+                    type_engine.insert(TypeInfo::ErrorRecovery),
                     warnings,
                     errors
                 );
@@ -94,7 +94,7 @@ impl ty::TyDeclaration {
                         EnforceTypeArguments::No,
                         None
                     ),
-                    type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+                    type_engine.insert(TypeInfo::ErrorRecovery),
                     warnings,
                     errors,
                 );
@@ -179,8 +179,7 @@ impl ty::TyDeclaration {
             }
             parsed::Declaration::FunctionDeclaration(fn_decl) => {
                 let span = fn_decl.span.clone();
-                let mut ctx =
-                    ctx.with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
+                let mut ctx = ctx.with_type_annotation(type_engine.insert(TypeInfo::Unknown));
                 let fn_decl = check!(
                     ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl, false, false),
                     return ok(ty::TyDeclaration::ErrorRecovery(span), warnings, errors),

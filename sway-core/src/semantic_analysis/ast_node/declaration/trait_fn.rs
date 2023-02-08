@@ -25,7 +25,6 @@ impl ty::TyTraitFn {
         } = trait_fn;
 
         let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
         let engines = ctx.engines();
 
         // Create a namespace for the trait function.
@@ -48,12 +47,12 @@ impl ty::TyTraitFn {
         // Type check the return type.
         let return_type = check!(
             fn_ctx.resolve_type_with_self(
-                type_engine.insert(decl_engine, return_type),
+                type_engine.insert(return_type),
                 &return_type_span,
                 EnforceTypeArguments::Yes,
                 None
             ),
-            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+            type_engine.insert(TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );

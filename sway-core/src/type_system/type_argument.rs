@@ -28,7 +28,7 @@ impl Spanned for TypeArgument {
 }
 
 impl HashWithEngines for TypeArgument {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         let TypeArgument {
             type_id,
             // these fields are not hashed because they aren't relevant/a
@@ -37,8 +37,7 @@ impl HashWithEngines for TypeArgument {
             span: _,
             call_path_tree: _,
         } = self;
-        let type_engine = engines.te();
-        type_engine.get(*type_id).hash(state, engines);
+        type_engine.get(*type_id).hash(state, type_engine);
     }
 }
 

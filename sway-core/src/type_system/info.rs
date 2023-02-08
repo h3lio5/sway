@@ -145,7 +145,7 @@ pub enum TypeInfo {
 }
 
 impl HashWithEngines for TypeInfo {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         std::mem::discriminant(self).hash(state);
         match self {
             TypeInfo::Str(len) => {
@@ -155,7 +155,7 @@ impl HashWithEngines for TypeInfo {
                 bits.hash(state);
             }
             TypeInfo::Tuple(fields) => {
-                fields.hash(state, engines);
+                fields.hash(state, type_engine);
             }
             TypeInfo::Enum {
                 call_path,
@@ -163,8 +163,8 @@ impl HashWithEngines for TypeInfo {
                 type_parameters,
             } => {
                 call_path.hash(state);
-                variant_types.hash(state, engines);
-                type_parameters.hash(state, engines);
+                variant_types.hash(state, type_engine);
+                type_parameters.hash(state, type_engine);
             }
             TypeInfo::Struct {
                 call_path,
@@ -172,8 +172,8 @@ impl HashWithEngines for TypeInfo {
                 type_parameters,
             } => {
                 call_path.hash(state);
-                fields.hash(state, engines);
-                type_parameters.hash(state, engines);
+                fields.hash(state, type_engine);
+                type_parameters.hash(state, type_engine);
             }
             TypeInfo::ContractCaller { abi_name, address } => {
                 abi_name.hash(state);
@@ -188,24 +188,24 @@ impl HashWithEngines for TypeInfo {
                 trait_constraints,
             } => {
                 name.hash(state);
-                trait_constraints.hash(state, engines);
+                trait_constraints.hash(state, type_engine);
             }
             TypeInfo::Custom {
                 call_path,
                 type_arguments,
             } => {
                 call_path.hash(state);
-                type_arguments.as_deref().hash(state, engines);
+                type_arguments.as_deref().hash(state, type_engine);
             }
             TypeInfo::Storage { fields } => {
-                fields.hash(state, engines);
+                fields.hash(state, type_engine);
             }
             TypeInfo::Array(elem_ty, count) => {
-                elem_ty.hash(state, engines);
+                elem_ty.hash(state, type_engine);
                 count.hash(state);
             }
             TypeInfo::Placeholder(ty) => {
-                ty.hash(state, engines);
+                ty.hash(state, type_engine);
             }
             TypeInfo::Numeric
             | TypeInfo::Boolean

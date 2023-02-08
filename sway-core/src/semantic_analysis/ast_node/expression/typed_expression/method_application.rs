@@ -33,7 +33,7 @@ pub(crate) fn type_check_method_application(
         let ctx = ctx
             .by_ref()
             .with_help_text("")
-            .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert(TypeInfo::Unknown));
         args_buf.push_back(check!(
             ty::TyExpression::type_check(ctx, arg.clone()),
             ty::TyExpression::error(span.clone(), engines),
@@ -108,7 +108,6 @@ pub(crate) fn type_check_method_application(
                 | constants::CONTRACT_CALL_COINS_PARAMETER_NAME
                 | constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME => {
                     let type_annotation = type_engine.insert(
-                        decl_engine,
                         if param.name.span().as_str()
                             != constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME
                         {
@@ -431,7 +430,7 @@ pub(crate) fn resolve_method_name(
             // type check the call path
             let type_id = check!(
                 call_path_binding.type_check_with_type_info(&mut ctx),
-                type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+                type_engine.insert(TypeInfo::ErrorRecovery),
                 warnings,
                 errors
             );
@@ -470,7 +469,7 @@ pub(crate) fn resolve_method_name(
             let type_id = arguments
                 .get(0)
                 .map(|x| x.return_type)
-                .unwrap_or_else(|| type_engine.insert(decl_engine, TypeInfo::Unknown));
+                .unwrap_or_else(|| type_engine.insert(TypeInfo::Unknown));
 
             // find the method
             check!(
@@ -495,7 +494,7 @@ pub(crate) fn resolve_method_name(
             let type_id = arguments
                 .get(0)
                 .map(|x| x.return_type)
-                .unwrap_or_else(|| type_engine.insert(decl_engine, TypeInfo::Unknown));
+                .unwrap_or_else(|| type_engine.insert(TypeInfo::Unknown));
 
             // find the method
             check!(

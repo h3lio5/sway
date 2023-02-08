@@ -26,14 +26,14 @@ pub struct TypeEngine {
 
 fn make_hasher<'a: 'b, 'b, K>(
     hash_builder: &'a impl BuildHasher,
-    engines: Engines<'b>,
+    type_engine: &'a TypeEngine,
 ) -> impl Fn(&K) -> u64 + 'b
 where
     K: HashWithEngines + ?Sized,
 {
     move |key: &K| {
         let mut state = hash_builder.build_hasher();
-        key.hash(&mut state, engines);
+        key.hash(&mut state, type_engine);
         state.finish()
     }
 }
@@ -41,12 +41,11 @@ where
 impl TypeEngine {
     /// Inserts a [TypeInfo] into the [TypeEngine] and returns a [TypeId]
     /// referring to that [TypeInfo].
-    pub(crate) fn insert(&self, decl_engine: &DeclEngine, ty: TypeInfo) -> TypeId {
+    pub(crate) fn insert(&self, ty: TypeInfo) -> TypeId {
         let mut id_map = self.id_map.write().unwrap();
 
-        let engines = Engines::new(self, decl_engine);
         let hash_builder = id_map.hasher().clone();
-        let ty_hash = make_hasher(&hash_builder, engines)(&ty);
+        let ty_hash = make_hasher(&hash_builder, self)(&ty);
 
         let raw_entry = id_map
             .raw_entry_mut()
@@ -56,7 +55,7 @@ impl TypeEngine {
             RawEntryMut::Vacant(_) if ty.can_change() => TypeId::new(self.slab.insert(ty)),
             RawEntryMut::Vacant(v) => {
                 let type_id = TypeId::new(self.slab.insert(ty.clone()));
-                v.insert_with_hasher(ty_hash, ty, type_id, make_hasher(&hash_builder, engines));
+                v.insert_with_hasher(ty_hash, ty, type_id, make_hasher(&hash_builder, self));
                 type_id
             }
         }
@@ -179,7 +178,7 @@ impl TypeEngine {
                             namespace,
                             mod_path
                         ),
-                        self.insert(decl_engine, TypeInfo::ErrorRecovery),
+                        self.insert(TypeInfo::ErrorRecovery),
                         warnings,
                         errors
                     );
@@ -490,7 +489,7 @@ impl TypeEngine {
                             name: call_path.to_string(),
                             span: call_path.span(),
                         });
-                        self.insert(decl_engine, TypeInfo::ErrorRecovery)
+                        self.insert(TypeInfo::ErrorRecovery)
                     }
                 }
             }
@@ -505,11 +504,11 @@ impl TypeEngine {
                         namespace,
                         mod_path
                     ),
-                    self.insert(decl_engine, TypeInfo::ErrorRecovery),
+                    self.insert(TypeInfo::ErrorRecovery),
                     warnings,
                     errors
                 );
-                self.insert(decl_engine, TypeInfo::Array(elem_ty, n))
+                self.insert(TypeInfo::Array(elem_ty, n))
             }
             TypeInfo::Tuple(mut type_arguments) => {
                 for type_argument in type_arguments.iter_mut() {
@@ -523,12 +522,12 @@ impl TypeEngine {
                             namespace,
                             mod_path
                         ),
-                        self.insert(decl_engine, TypeInfo::ErrorRecovery),
+                        self.insert(TypeInfo::ErrorRecovery),
                         warnings,
                         errors
                     );
                 }
-                self.insert(decl_engine, TypeInfo::Tuple(type_arguments))
+                self.insert(TypeInfo::Tuple(type_arguments))
             }
             _ => type_id,
         };

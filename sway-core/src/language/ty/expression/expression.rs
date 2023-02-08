@@ -29,7 +29,7 @@ impl PartialEqWithEngines for TyExpression {
 }
 
 impl HashWithEngines for TyExpression {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         let TyExpression {
             expression,
             return_type,
@@ -37,9 +37,8 @@ impl HashWithEngines for TyExpression {
             // reliable source of obj v. obj distinction
             span: _,
         } = self;
-        let type_engine = engines.te();
-        expression.hash(state, engines);
-        type_engine.get(*return_type).hash(state, engines);
+        expression.hash(state, type_engine);
+        type_engine.get(*return_type).hash(state, type_engine);
     }
 }
 
@@ -521,10 +520,9 @@ impl DeterministicallyAborts for TyExpression {
 impl TyExpression {
     pub(crate) fn error(span: Span, engines: Engines<'_>) -> TyExpression {
         let type_engine = engines.te();
-        let decl_engine = engines.de();
         TyExpression {
             expression: TyExpressionVariant::Tuple { fields: vec![] },
-            return_type: type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+            return_type: type_engine.insert(TypeInfo::ErrorRecovery),
             span,
         }
     }

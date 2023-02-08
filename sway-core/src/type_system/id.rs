@@ -77,7 +77,6 @@ impl ReplaceSelfType for TypeId {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         fn helper(type_id: TypeId, engines: Engines<'_>, self_type: TypeId) -> Option<TypeId> {
             let type_engine = engines.te();
-            let decl_engine = engines.de();
             match type_engine.get(type_id) {
                 TypeInfo::SelfType => Some(self_type),
                 TypeInfo::Enum {
@@ -109,14 +108,11 @@ impl ReplaceSelfType for TypeId {
                         })
                         .collect::<Vec<_>>();
                     if need_to_create_new {
-                        Some(type_engine.insert(
-                            decl_engine,
-                            TypeInfo::Enum {
-                                variant_types,
-                                type_parameters,
-                                call_path,
-                            },
-                        ))
+                        Some(type_engine.insert(TypeInfo::Enum {
+                            variant_types,
+                            type_parameters,
+                            call_path,
+                        }))
                     } else {
                         None
                     }
@@ -150,14 +146,11 @@ impl ReplaceSelfType for TypeId {
                         })
                         .collect::<Vec<_>>();
                     if need_to_create_new {
-                        Some(type_engine.insert(
-                            decl_engine,
-                            TypeInfo::Struct {
-                                fields,
-                                call_path,
-                                type_parameters,
-                            },
-                        ))
+                        Some(type_engine.insert(TypeInfo::Struct {
+                            fields,
+                            call_path,
+                            type_parameters,
+                        }))
                     } else {
                         None
                     }
@@ -175,7 +168,7 @@ impl ReplaceSelfType for TypeId {
                         })
                         .collect::<Vec<_>>();
                     if need_to_create_new {
-                        Some(type_engine.insert(decl_engine, TypeInfo::Tuple(fields)))
+                        Some(type_engine.insert(TypeInfo::Tuple(fields)))
                     } else {
                         None
                     }
@@ -199,13 +192,10 @@ impl ReplaceSelfType for TypeId {
                             .collect::<Vec<_>>()
                     });
                     if need_to_create_new {
-                        Some(type_engine.insert(
-                            decl_engine,
-                            TypeInfo::Custom {
-                                call_path,
-                                type_arguments,
-                            },
-                        ))
+                        Some(type_engine.insert(TypeInfo::Custom {
+                            call_path,
+                            type_arguments,
+                        }))
                     } else {
                         None
                     }
@@ -213,7 +203,7 @@ impl ReplaceSelfType for TypeId {
                 TypeInfo::Array(mut elem_ty, count) => helper(elem_ty.type_id, engines, self_type)
                     .map(|type_id| {
                         elem_ty.type_id = type_id;
-                        type_engine.insert(decl_engine, TypeInfo::Array(elem_ty, count))
+                        type_engine.insert(TypeInfo::Array(elem_ty, count))
                     }),
                 TypeInfo::Storage { fields } => {
                     let mut need_to_create_new = false;
@@ -230,7 +220,7 @@ impl ReplaceSelfType for TypeId {
                         })
                         .collect::<Vec<_>>();
                     if need_to_create_new {
-                        Some(type_engine.insert(decl_engine, TypeInfo::Storage { fields }))
+                        Some(type_engine.insert(TypeInfo::Storage { fields }))
                     } else {
                         None
                     }

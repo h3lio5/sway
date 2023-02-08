@@ -47,7 +47,7 @@ impl PartialEqWithEngines for TyFunctionDeclaration {
 }
 
 impl HashWithEngines for TyFunctionDeclaration {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         let TyFunctionDeclaration {
             name,
             body,
@@ -64,10 +64,10 @@ impl HashWithEngines for TyFunctionDeclaration {
             implementing_type: _,
         } = self;
         name.hash(state);
-        body.hash(state, engines);
-        parameters.hash(state, engines);
-        return_type.hash(state, engines);
-        type_parameters.hash(state, engines);
+        body.hash(state, type_engine);
+        parameters.hash(state, type_engine);
+        return_type.hash(state, type_engine);
+        type_parameters.hash(state, type_engine);
         visibility.hash(state);
         is_contract_call.hash(state);
         purity.hash(state);
@@ -357,7 +357,7 @@ impl PartialEqWithEngines for TyFunctionParameter {
 }
 
 impl HashWithEngines for TyFunctionParameter {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         let TyFunctionParameter {
             name,
             is_reference,
@@ -368,7 +368,7 @@ impl HashWithEngines for TyFunctionParameter {
             mutability_span: _,
         } = self;
         name.hash(state);
-        type_argument.hash(state, engines);
+        type_argument.hash(state, type_engine);
         is_reference.hash(state);
         is_mutable.hash(state);
     }

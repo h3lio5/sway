@@ -380,8 +380,7 @@ impl PartialEqWithEngines for TyExpressionVariant {
 }
 
 impl HashWithEngines for TyExpressionVariant {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let type_engine = engines.te();
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         std::mem::discriminant(self).hash(state);
         match self {
             Self::Literal(lit) => {
@@ -402,13 +401,13 @@ impl HashWithEngines for TyExpressionVariant {
                 function_decl_ref.hash(state);
                 arguments.iter().for_each(|(name, arg)| {
                     name.hash(state);
-                    arg.hash(state, engines);
+                    arg.hash(state, type_engine);
                 });
             }
             Self::LazyOperator { op, lhs, rhs } => {
                 op.hash(state);
-                lhs.hash(state, engines);
-                rhs.hash(state, engines);
+                lhs.hash(state, type_engine);
+                rhs.hash(state, type_engine);
             }
             Self::VariableExpression {
                 name,
@@ -422,14 +421,14 @@ impl HashWithEngines for TyExpressionVariant {
                 mutability.hash(state);
             }
             Self::Tuple { fields } => {
-                fields.hash(state, engines);
+                fields.hash(state, type_engine);
             }
             Self::Array { contents } => {
-                contents.hash(state, engines);
+                contents.hash(state, type_engine);
             }
             Self::ArrayIndex { prefix, index } => {
-                prefix.hash(state, engines);
-                index.hash(state, engines);
+                prefix.hash(state, type_engine);
+                index.hash(state, type_engine);
             }
             Self::StructExpression {
                 struct_name,
@@ -440,10 +439,10 @@ impl HashWithEngines for TyExpressionVariant {
                 call_path_binding: _,
             } => {
                 struct_name.hash(state);
-                fields.hash(state, engines);
+                fields.hash(state, type_engine);
             }
             Self::CodeBlock(contents) => {
-                contents.hash(state, engines);
+                contents.hash(state, type_engine);
             }
             Self::MatchExp {
                 desugared,
@@ -451,17 +450,17 @@ impl HashWithEngines for TyExpressionVariant {
                 // reliable source of obj v. obj distinction
                 scrutinees: _,
             } => {
-                desugared.hash(state, engines);
+                desugared.hash(state, type_engine);
             }
             Self::IfExp {
                 condition,
                 then,
                 r#else,
             } => {
-                condition.hash(state, engines);
-                then.hash(state, engines);
+                condition.hash(state, type_engine);
+                then.hash(state, type_engine);
                 if let Some(x) = r#else.as_ref() {
-                    x.hash(state, engines)
+                    x.hash(state, type_engine)
                 }
             }
             Self::AsmExpression {
@@ -472,7 +471,7 @@ impl HashWithEngines for TyExpressionVariant {
                 // reliable source of obj v. obj distinction
                 whole_block_span: _,
             } => {
-                registers.hash(state, engines);
+                registers.hash(state, type_engine);
                 body.hash(state);
                 returns.hash(state);
             }
@@ -484,11 +483,11 @@ impl HashWithEngines for TyExpressionVariant {
                 // reliable source of obj v. obj distinction
                 field_instantiation_span: _,
             } => {
-                prefix.hash(state, engines);
-                field_to_access.hash(state, engines);
+                prefix.hash(state, type_engine);
+                field_to_access.hash(state, type_engine);
                 type_engine
                     .get(*resolved_type_of_parent)
-                    .hash(state, engines);
+                    .hash(state, type_engine);
             }
             Self::TupleElemAccess {
                 prefix,
@@ -498,11 +497,11 @@ impl HashWithEngines for TyExpressionVariant {
                 // reliable source of obj v. obj distinction
                 elem_to_access_span: _,
             } => {
-                prefix.hash(state, engines);
+                prefix.hash(state, type_engine);
                 elem_to_access_num.hash(state);
                 type_engine
                     .get(*resolved_type_of_parent)
-                    .hash(state, engines);
+                    .hash(state, type_engine);
             }
             Self::EnumInstantiation {
                 enum_decl,
@@ -514,11 +513,11 @@ impl HashWithEngines for TyExpressionVariant {
                 variant_instantiation_span: _,
                 call_path_binding: _,
             } => {
-                enum_decl.hash(state, engines);
+                enum_decl.hash(state, type_engine);
                 variant_name.hash(state);
                 tag.hash(state);
                 if let Some(x) = contents.as_ref() {
-                    x.hash(state, engines)
+                    x.hash(state, type_engine)
                 }
             }
             Self::AbiCast {
@@ -529,37 +528,37 @@ impl HashWithEngines for TyExpressionVariant {
                 span: _,
             } => {
                 abi_name.hash(state);
-                address.hash(state, engines);
+                address.hash(state, type_engine);
             }
             Self::StorageAccess(exp) => {
-                exp.hash(state, engines);
+                exp.hash(state, type_engine);
             }
             Self::IntrinsicFunction(exp) => {
-                exp.hash(state, engines);
+                exp.hash(state, type_engine);
             }
             Self::AbiName(name) => {
                 name.hash(state);
             }
             Self::EnumTag { exp } => {
-                exp.hash(state, engines);
+                exp.hash(state, type_engine);
             }
             Self::UnsafeDowncast { exp, variant } => {
-                exp.hash(state, engines);
-                variant.hash(state, engines);
+                exp.hash(state, type_engine);
+                variant.hash(state, type_engine);
             }
             Self::WhileLoop { condition, body } => {
-                condition.hash(state, engines);
-                body.hash(state, engines);
+                condition.hash(state, type_engine);
+                body.hash(state, type_engine);
             }
             Self::Break | Self::Continue | Self::FunctionParameter => {}
             Self::Reassignment(exp) => {
-                exp.hash(state, engines);
+                exp.hash(state, type_engine);
             }
             Self::StorageReassignment(exp) => {
-                exp.hash(state, engines);
+                exp.hash(state, type_engine);
             }
             Self::Return(exp) => {
-                exp.hash(state, engines);
+                exp.hash(state, type_engine);
             }
         }
     }

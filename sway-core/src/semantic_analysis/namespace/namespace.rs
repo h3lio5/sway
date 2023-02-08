@@ -201,7 +201,7 @@ impl Namespace {
                 self,
                 method_prefix
             ),
-            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+            type_engine.insert(TypeInfo::ErrorRecovery),
             warnings,
             errors
         );

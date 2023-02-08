@@ -142,7 +142,6 @@ fn check_type(
     let mut errors: Vec<CompileError> = vec![];
 
     let ty_engine = engines.te();
-    let decl_engine = engines.de();
 
     let type_info = check!(
         CompileResult::from(ty_engine.to_typeinfo(ty, &span).map_err(CompileError::from)),

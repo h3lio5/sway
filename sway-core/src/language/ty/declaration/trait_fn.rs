@@ -33,7 +33,7 @@ impl PartialEqWithEngines for TyTraitFn {
 }
 
 impl HashWithEngines for TyTraitFn {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         let TyTraitFn {
             name,
             purity,
@@ -44,10 +44,9 @@ impl HashWithEngines for TyTraitFn {
             return_type_span: _,
             attributes: _,
         } = self;
-        let type_engine = engines.te();
         name.hash(state);
-        parameters.hash(state, engines);
-        type_engine.get(*return_type).hash(state, engines);
+        parameters.hash(state, type_engine);
+        type_engine.get(*return_type).hash(state, type_engine);
         purity.hash(state);
     }
 }

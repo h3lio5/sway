@@ -32,7 +32,7 @@ impl PartialEqWithEngines for TyConstantDeclaration {
 }
 
 impl HashWithEngines for TyConstantDeclaration {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         let TyConstantDeclaration {
             name,
             value,
@@ -45,9 +45,9 @@ impl HashWithEngines for TyConstantDeclaration {
             span: _,
         } = self;
         name.hash(state);
-        value.hash(state, engines);
+        value.hash(state, type_engine);
         visibility.hash(state);
-        type_ascription.hash(state, engines);
+        type_ascription.hash(state, type_engine);
         is_configurable.hash(state);
     }
 }

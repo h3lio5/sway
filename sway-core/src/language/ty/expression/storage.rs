@@ -21,9 +21,9 @@ impl PartialEqWithEngines for TyStorageAccess {
 }
 
 impl HashWithEngines for TyStorageAccess {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         let TyStorageAccess { fields, ix } = self;
-        fields.hash(state, engines);
+        fields.hash(state, type_engine);
         ix.hash(state);
     }
 }
@@ -63,7 +63,7 @@ impl PartialEqWithEngines for TyStorageAccessDescriptor {
 }
 
 impl HashWithEngines for TyStorageAccessDescriptor {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         let TyStorageAccessDescriptor {
             name,
             type_id,
@@ -71,8 +71,7 @@ impl HashWithEngines for TyStorageAccessDescriptor {
             // reliable source of obj v. obj distinction
             span: _,
         } = self;
-        let type_engine = engines.te();
         name.hash(state);
-        type_engine.get(*type_id).hash(state, engines);
+        type_engine.get(*type_id).hash(state, type_engine);
     }
 }

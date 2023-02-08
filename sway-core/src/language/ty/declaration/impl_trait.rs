@@ -35,7 +35,7 @@ impl PartialEqWithEngines for TyImplTrait {
 }
 
 impl HashWithEngines for TyImplTrait {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         let TyImplTrait {
             impl_type_parameters,
             trait_name,
@@ -48,14 +48,13 @@ impl HashWithEngines for TyImplTrait {
             type_implementing_for_span: _,
             span: _,
         } = self;
-        let type_engine = engines.te();
         trait_name.hash(state);
-        impl_type_parameters.hash(state, engines);
-        trait_type_arguments.hash(state, engines);
+        impl_type_parameters.hash(state, type_engine);
+        trait_type_arguments.hash(state, type_engine);
         methods.hash(state);
         type_engine
             .get(*implementing_for_type_id)
-            .hash(state, engines);
+            .hash(state, type_engine);
         trait_decl_ref.hash(state);
     }
 }

@@ -107,7 +107,6 @@ impl TraitMap {
         let mut errors = vec![];
 
         let type_engine = engines.te();
-        let decl_engine = engines.de();
 
         let mut trait_methods: TraitMethods = im::HashMap::new();
         for decl_ref in methods.iter() {
@@ -115,17 +114,14 @@ impl TraitMap {
         }
 
         // check to see if adding this trait will produce a conflicting definition
-        let trait_type_id = type_engine.insert(
-            decl_engine,
-            TypeInfo::Custom {
-                call_path: trait_name.suffix.clone().into(),
-                type_arguments: if trait_type_args.is_empty() {
-                    None
-                } else {
-                    Some(trait_type_args.clone())
-                },
+        let trait_type_id = type_engine.insert(TypeInfo::Custom {
+            call_path: trait_name.suffix.clone().into(),
+            type_arguments: if trait_type_args.is_empty() {
+                None
+            } else {
+                Some(trait_type_args.clone())
             },
-        );
+        });
         for TraitEntry {
             key:
                 TraitKey {
@@ -143,17 +139,14 @@ impl TraitMap {
                     },
                 ..
             } = map_trait_name;
-            let map_trait_type_id = type_engine.insert(
-                decl_engine,
-                TypeInfo::Custom {
-                    call_path: map_trait_name_suffix.clone().into(),
-                    type_arguments: if map_trait_type_args.is_empty() {
-                        None
-                    } else {
-                        Some(map_trait_type_args.to_vec())
-                    },
+            let map_trait_type_id = type_engine.insert(TypeInfo::Custom {
+                call_path: map_trait_name_suffix.clone().into(),
+                type_arguments: if map_trait_type_args.is_empty() {
+                    None
+                } else {
+                    Some(map_trait_type_args.to_vec())
                 },
-            );
+            });
 
             let types_are_subset = type_engine
                 .get(type_id)
@@ -576,7 +569,7 @@ impl TraitMap {
                 } else if decider(&type_info, &type_engine.get(*map_type_id)) {
                     let type_mapping =
                         TypeSubstMap::from_superset_and_subset(type_engine, *map_type_id, *type_id);
-                    let new_self_type = type_engine.insert(decl_engine, TypeInfo::SelfType);
+                    let new_self_type = type_engine.insert(TypeInfo::SelfType);
                     type_id.replace_self_type(engines, new_self_type);
                     let trait_methods: TraitMethods = map_trait_methods
                         .clone()
@@ -695,7 +688,6 @@ impl TraitMap {
         let mut errors = vec![];
 
         let type_engine = engines.te();
-        let decl_engine = engines.de();
 
         let all_impld_traits: BTreeMap<Ident, TypeId> = self
             .trait_impls
@@ -703,17 +695,14 @@ impl TraitMap {
             .filter_map(|e| {
                 let key = &e.key;
                 let suffix = &key.name.suffix;
-                let map_trait_type_id = type_engine.insert(
-                    decl_engine,
-                    TypeInfo::Custom {
-                        call_path: suffix.name.clone().into(),
-                        type_arguments: if suffix.args.is_empty() {
-                            None
-                        } else {
-                            Some(suffix.args.to_vec())
-                        },
+                let map_trait_type_id = type_engine.insert(TypeInfo::Custom {
+                    call_path: suffix.name.clone().into(),
+                    type_arguments: if suffix.args.is_empty() {
+                        None
+                    } else {
+                        Some(suffix.args.to_vec())
                     },
-                );
+                });
                 if are_equal_minus_dynamic_types(engines, type_id, key.type_id) {
                     Some((suffix.name.clone(), map_trait_type_id))
                 } else {
@@ -729,17 +718,14 @@ impl TraitMap {
                     trait_name: constraint_trait_name,
                     type_arguments: constraint_type_arguments,
                 } = c;
-                let constraint_type_id = type_engine.insert(
-                    decl_engine,
-                    TypeInfo::Custom {
-                        call_path: constraint_trait_name.suffix.clone().into(),
-                        type_arguments: if constraint_type_arguments.is_empty() {
-                            None
-                        } else {
-                            Some(constraint_type_arguments.clone())
-                        },
+                let constraint_type_id = type_engine.insert(TypeInfo::Custom {
+                    call_path: constraint_trait_name.suffix.clone().into(),
+                    type_arguments: if constraint_type_arguments.is_empty() {
+                        None
+                    } else {
+                        Some(constraint_type_arguments.clone())
                     },
-                );
+                });
                 (c.trait_name.suffix.clone(), constraint_type_id)
             })
             .collect();

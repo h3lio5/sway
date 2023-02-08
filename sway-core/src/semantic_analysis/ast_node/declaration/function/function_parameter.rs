@@ -19,7 +19,6 @@ impl ty::TyFunctionParameter {
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
 
         let FunctionParameter {
             name,
@@ -36,7 +35,7 @@ impl ty::TyFunctionParameter {
                 EnforceTypeArguments::Yes,
                 None
             ),
-            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+            type_engine.insert(TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );
@@ -73,7 +72,6 @@ impl ty::TyFunctionParameter {
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
 
         let FunctionParameter {
             name,
@@ -87,12 +85,12 @@ impl ty::TyFunctionParameter {
             ctx.namespace.resolve_type_with_self(
                 ctx.engines(),
                 type_argument.type_id,
-                type_engine.insert(decl_engine, TypeInfo::SelfType),
+                type_engine.insert(TypeInfo::SelfType),
                 &type_argument.span,
                 EnforceTypeArguments::Yes,
                 None
             ),
-            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+            type_engine.insert(TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );

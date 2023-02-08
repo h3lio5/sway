@@ -37,7 +37,6 @@ impl ty::TyFunctionDeclaration {
         } = fn_decl;
 
         let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
 
         // If functions aren't allowed in this location, return an error.
         if ctx.functions_disallowed() {
@@ -100,7 +99,7 @@ impl ty::TyFunctionDeclaration {
                 EnforceTypeArguments::Yes,
                 None
             ),
-            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+            type_engine.insert(TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );
@@ -119,7 +118,7 @@ impl ty::TyFunctionDeclaration {
                 ty::TyCodeBlock::type_check(ctx, body),
                 (
                     ty::TyCodeBlock { contents: vec![] },
-                    type_engine.insert(decl_engine, TypeInfo::ErrorRecovery)
+                    type_engine.insert(TypeInfo::ErrorRecovery)
                 ),
                 warnings,
                 errors
@@ -207,11 +206,10 @@ fn unify_return_statements(
 
 #[test]
 fn test_function_selector_behavior() {
-    use crate::{decl_engine::DeclEngine, language::Visibility};
+    use crate::language::Visibility;
     use sway_types::{integer_bits::IntegerBits, Ident, Span};
 
     let type_engine = TypeEngine::default();
-    let decl_engine = DeclEngine::default();
 
     let decl = ty::TyFunctionDeclaration {
         purity: Default::default(),
@@ -246,7 +244,7 @@ fn test_function_selector_behavior() {
                 is_mutable: false,
                 mutability_span: Span::dummy(),
                 type_argument: type_engine
-                    .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy())))
+                    .insert(TypeInfo::Str(Length::new(5, Span::dummy())))
                     .into(),
             },
             ty::TyFunctionParameter {
@@ -255,12 +253,9 @@ fn test_function_selector_behavior() {
                 is_mutable: false,
                 mutability_span: Span::dummy(),
                 type_argument: TypeArgument {
-                    type_id: type_engine.insert(
-                        &decl_engine,
-                        TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
-                    ),
+                    type_id: type_engine.insert(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
                     initial_type_id: type_engine
-                        .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
+                        .insert(TypeInfo::Str(Length::new(5, Span::dummy()))),
                     span: Span::dummy(),
                     call_path_tree: None,
                 },

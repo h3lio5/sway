@@ -24,7 +24,6 @@ impl ty::TyAstNode {
         let mut errors = Vec::new();
 
         let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
         let engines = ctx.engines();
 
         let node = ty::TyAstNode {
@@ -69,7 +68,7 @@ impl ty::TyAstNode {
                 )),
                 AstNodeContent::Expression(expr) => {
                     let ctx = ctx
-                        .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown))
+                        .with_type_annotation(type_engine.insert(TypeInfo::Unknown))
                         .with_help_text("");
                     let inner = check!(
                         ty::TyExpression::type_check(ctx, expr.clone()),

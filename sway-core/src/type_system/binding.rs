@@ -166,7 +166,6 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
 
         let (type_info, type_ident) = self.inner.suffix.clone();
         let type_info_span = type_ident.span();
@@ -191,12 +190,12 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
         // resolve the type of the type info object
         let type_id = check!(
             ctx.resolve_type_with_self(
-                type_engine.insert(decl_engine, type_info),
+                type_engine.insert(type_info),
                 &type_info_span,
                 EnforceTypeArguments::No,
                 Some(&type_info_prefix)
             ),
-            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+            type_engine.insert(TypeInfo::ErrorRecovery),
             warnings,
             errors
         );
@@ -234,7 +233,7 @@ impl TypeBinding<CallPath> {
                     EnforceTypeArguments::Yes,
                     None
                 ),
-                type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+                type_engine.insert(TypeInfo::ErrorRecovery),
                 warnings,
                 errors,
             );

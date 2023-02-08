@@ -22,11 +22,11 @@ impl PartialEqWithEngines for TyAsmRegisterDeclaration {
 }
 
 impl HashWithEngines for TyAsmRegisterDeclaration {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         let TyAsmRegisterDeclaration { initializer, name } = self;
         name.hash(state);
         if let Some(x) = initializer.as_ref() {
-            x.hash(state, engines)
+            x.hash(state, type_engine)
         }
     }
 }

@@ -35,7 +35,7 @@ impl PartialEqWithEngines for TyTraitDeclaration {
 }
 
 impl HashWithEngines for TyTraitDeclaration {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         let TyTraitDeclaration {
             name,
             type_parameters,
@@ -49,7 +49,7 @@ impl HashWithEngines for TyTraitDeclaration {
             span: _,
         } = self;
         name.hash(state);
-        type_parameters.hash(state, engines);
+        type_parameters.hash(state, type_engine);
         interface_surface.hash(state);
         methods.hash(state);
         supertraits.hash(state);

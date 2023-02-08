@@ -75,7 +75,7 @@ impl<T: DebugWithEngines> fmt::Debug for WithEngines<'_, T> {
 
 impl<T: HashWithEngines> Hash for WithEngines<'_, T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.thing.hash(state, self.engines)
+        self.thing.hash(state, self.engines.te())
     }
 }
 
@@ -108,28 +108,28 @@ impl<T: DebugWithEngines> DebugWithEngines for &T {
 }
 
 pub trait HashWithEngines {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>);
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine);
 }
 
 impl<T: HashWithEngines + ?Sized> HashWithEngines for &T {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        (*self).hash(state, engines)
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        (*self).hash(state, type_engine)
     }
 }
 
 impl<T: HashWithEngines> HashWithEngines for Option<T> {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         match self {
             None => state.write_u8(0),
-            Some(x) => x.hash(state, engines),
+            Some(x) => x.hash(state, type_engine),
         }
     }
 }
 
 impl<T: HashWithEngines> HashWithEngines for [T] {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         for x in self {
-            x.hash(state, engines)
+            x.hash(state, type_engine)
         }
     }
 }

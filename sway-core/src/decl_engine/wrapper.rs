@@ -57,37 +57,37 @@ impl PartialEqWithEngines for DeclWrapper {
 }
 
 impl HashWithEngines for DeclWrapper {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         use DeclWrapper::*;
         std::mem::discriminant(self).hash(state);
         match self {
             Unknown => {}
             Function(decl) => {
-                decl.hash(state, engines);
+                decl.hash(state, type_engine);
             }
             Trait(decl) => {
-                decl.hash(state, engines);
+                decl.hash(state, type_engine);
             }
             TraitFn(decl) => {
-                decl.hash(state, engines);
+                decl.hash(state, type_engine);
             }
             ImplTrait(decl) => {
-                decl.hash(state, engines);
+                decl.hash(state, type_engine);
             }
             Struct(decl) => {
-                decl.hash(state, engines);
+                decl.hash(state, type_engine);
             }
             Storage(decl) => {
-                decl.hash(state, engines);
+                decl.hash(state, type_engine);
             }
             Abi(decl) => {
                 decl.hash(state);
             }
             Constant(decl) => {
-                decl.hash(state, engines);
+                decl.hash(state, type_engine);
             }
             Enum(decl) => {
-                decl.hash(state, engines);
+                decl.hash(state, type_engine);
             }
         }
     }

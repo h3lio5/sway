@@ -38,14 +38,14 @@ impl PartialEqWithEngines for TyAstNode {
 }
 
 impl HashWithEngines for TyAstNode {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         let TyAstNode {
             content,
             // the span is not hashed because it isn't relevant/a reliable
             // source of obj v. obj distinction
             span: _,
         } = self;
-        content.hash(state, engines);
+        content.hash(state, type_engine);
     }
 }
 
@@ -348,15 +348,15 @@ impl PartialEqWithEngines for TyAstNodeContent {
 }
 
 impl HashWithEngines for TyAstNodeContent {
-    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         use TyAstNodeContent::*;
         std::mem::discriminant(self).hash(state);
         match self {
             Declaration(decl) => {
-                decl.hash(state, engines);
+                decl.hash(state, type_engine);
             }
             Expression(exp) | ImplicitReturnExpression(exp) => {
-                exp.hash(state, engines);
+                exp.hash(state, type_engine);
             }
             SideEffect(effect) => {
                 effect.hash(state);
