@@ -3,14 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
-use crate::{
-    decl_engine::DeclRef,
-    engine_threading::*,
-    error::*,
-    language::CallPath,
-    type_system::{SubstTypes, TypeId},
-    ReplaceSelfType, TraitConstraint, TypeArgument, TypeEngine, TypeInfo, TypeSubstMap,
-};
+use crate::{decl_engine::*, engine_threading::*, error::*, language::CallPath, type_system::*};
 
 #[derive(Clone, Debug)]
 struct TraitSuffix {
@@ -570,14 +563,16 @@ impl TraitMap {
                     let type_mapping =
                         TypeSubstMap::from_superset_and_subset(type_engine, *map_type_id, *type_id);
                     let new_self_type = type_engine.insert(TypeInfo::SelfType);
-                    type_id.replace_self_type(engines, new_self_type);
+                    todo!();
+                    // type_id.replace_self_type(engines, new_self_type);
                     let trait_methods: TraitMethods = map_trait_methods
                         .clone()
                         .into_iter()
                         .map(|(name, decl_ref)| {
                             let mut decl = decl_engine.get(&decl_ref);
                             decl.subst(&type_mapping, engines);
-                            decl.replace_self_type(engines, new_self_type);
+                            todo!();
+                            // decl.replace_self_type(engines, new_self_type);
                             (
                                 name,
                                 decl_engine

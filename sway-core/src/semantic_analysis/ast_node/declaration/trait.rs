@@ -284,7 +284,8 @@ impl ty::TyTraitDeclaration {
                 warnings,
                 errors
             );
-            method.replace_self_type(engines, type_id);
+            todo!();
+            // method.replace_self_type(engines, type_id);
             method.subst(&type_mapping, engines);
             all_methods.push(
                 ctx.decl_engine
@@ -299,7 +300,8 @@ impl ty::TyTraitDeclaration {
                 warnings,
                 errors
             );
-            method.replace_self_type(engines, type_id);
+            todo!();
+            // method.replace_self_type(engines, type_id);
             method.subst(&type_mapping, engines);
             all_methods.push(
                 ctx.decl_engine

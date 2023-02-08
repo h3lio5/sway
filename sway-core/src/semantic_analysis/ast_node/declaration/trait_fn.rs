@@ -46,7 +46,7 @@ impl ty::TyTraitFn {
 
         // Type check the return type.
         let return_type = check!(
-            fn_ctx.resolve_type_with_self(
+            fn_ctx.resolve_type(
                 type_engine.insert(return_type),
                 &return_type_span,
                 EnforceTypeArguments::Yes,

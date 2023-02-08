@@ -84,7 +84,7 @@ impl ty::TyCodeBlock {
                 }
             });
 
-        append!(ctx.unify_with_self(block_type, &span), warnings, errors);
+        append!(ctx.unify(block_type, &span), warnings, errors);
 
         let typed_code_block = ty::TyCodeBlock {
             contents: evaluated_contents,

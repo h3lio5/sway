@@ -29,7 +29,7 @@ impl ty::TyFunctionParameter {
         } = parameter;
 
         type_argument.type_id = check!(
-            ctx.resolve_type_with_self(
+            ctx.resolve_type(
                 type_argument.type_id,
                 &type_argument.span,
                 EnforceTypeArguments::Yes,
@@ -82,10 +82,9 @@ impl ty::TyFunctionParameter {
         } = parameter;
 
         type_argument.type_id = check!(
-            ctx.namespace.resolve_type_with_self(
+            ctx.namespace.resolve_type(
                 ctx.engines(),
                 type_argument.type_id,
-                type_engine.insert(TypeInfo::SelfType),
                 &type_argument.span,
                 EnforceTypeArguments::Yes,
                 None
