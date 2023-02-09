@@ -695,46 +695,6 @@ fn type_check_trait_implementation(
         impld_method_refs.insert(name, decl_ref);
     }
 
-    let mut all_method_refs: Vec<DeclRef> = impld_method_refs.values().cloned().collect();
-
-    // Retrieve the methods defined on the trait declaration and transform
-    // them into the correct typing for this impl block by using the type
-    // parameters from the original trait declaration and the type arguments of
-    // the trait name in the current impl block that we are type checking and
-    // using the stub decl ids from the interface surface and the new
-    // decl ids from the newly implemented methods.
-    let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
-        trait_type_parameters
-            .iter()
-            .map(|type_param| type_param.type_id)
-            .collect(),
-        trait_type_arguments
-            .iter()
-            .map(|type_arg| type_arg.type_id)
-            .collect(),
-    );
-    stub_method_refs.extend(supertrait_stub_method_refs);
-    impld_method_refs.extend(supertrait_impld_method_refs);
-    let decl_mapping =
-        DeclMapping::from_stub_and_impld_decl_refs(stub_method_refs, impld_method_refs);
-    for decl_ref in trait_methods.iter() {
-        let mut method = check!(
-            CompileResult::from(decl_engine.get_function(decl_ref, block_span)),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        method.replace_decls(&decl_mapping, engines);
-        method.subst(&type_mapping, engines);
-        todo!();
-        // method.replace_self_type(engines, ctx.self_type());
-        all_method_refs.push(
-            decl_engine
-                .insert(method)
-                .with_parent(decl_engine, decl_ref),
-        );
-    }
-
     // check that the implementation checklist is complete
     if !method_checklist.is_empty() {
         errors.push(CompileError::MissingInterfaceSurfaceMethods {
@@ -746,6 +706,8 @@ fn type_check_trait_implementation(
                 .join("\n"),
         });
     }
+
+    let all_method_refs: Vec<DeclRef> = impld_method_refs.values().cloned().collect();
 
     if errors.is_empty() {
         ok(all_method_refs, warnings, errors)

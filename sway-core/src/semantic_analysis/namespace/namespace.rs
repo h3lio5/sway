@@ -136,10 +136,9 @@ impl Namespace {
     /// found.
     pub(crate) fn find_method_for_type(
         &mut self,
-        mut type_id: TypeId,
+        type_id: TypeId,
         method_prefix: &Path,
         method_name: &Ident,
-        self_type: TypeId,
         args_buf: &VecDeque<ty::TyExpression>,
         engines: Engines<'_>,
     ) -> CompileResult<DeclRef> {

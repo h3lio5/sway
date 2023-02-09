@@ -2,7 +2,7 @@ use std::hash::{Hash, Hasher};
 
 use sway_types::{Ident, Span, Spanned};
 
-use crate::{decl_engine::*, engine_threading::*, language::ty, type_system::*};
+use crate::{decl_engine::*, engine_threading::*, type_system::*};
 
 /// A reference to the use of a declaration. A smart-wrapper around a [DeclId],
 /// containing additional information about a declaration.
@@ -48,19 +48,6 @@ impl DeclRef {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
         decl.subst(type_mapping, engines);
-        decl_engine
-            .insert_wrapper(self.name.clone(), decl, self.decl_span.clone())
-            .with_parent(decl_engine, self)
-    }
-
-    pub(crate) fn replace_decls_and_insert_new(
-        &self,
-        decl_mapping: &DeclMapping,
-        engines: Engines<'_>,
-    ) -> DeclRef {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(&self.clone());
-        decl.replace_decls(decl_mapping, engines);
         decl_engine
             .insert_wrapper(self.name.clone(), decl, self.decl_span.clone())
             .with_parent(decl_engine, self)
@@ -114,37 +101,6 @@ impl SubstTypes for DeclRef {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
         decl.subst(type_mapping, engines);
-        decl_engine.replace(self, decl);
-    }
-}
-
-impl ReplaceDecls for DeclRef {
-    fn replace_decls_inner(&mut self, _decl_mapping: &DeclMapping, _engines: Engines<'_>) {
-        todo!();
-        // let decl_engine = engines.de();
-        // if let Some(new_decl_ref) = decl_mapping.find_match(self) {
-        //     self.id = new_decl_ref;
-        //     return;
-        // }
-        // let all_parents = decl_engine.find_all_parents(engines, self);
-        // for parent in all_parents.iter() {
-        //     if let Some(new_decl_ref) = decl_mapping.find_match(parent) {
-        //         self.id = new_decl_ref;
-        //         return;
-        //     }
-        // }
-    }
-}
-
-impl ReplaceFunctionImplementingType for DeclRef {
-    fn replace_implementing_type(
-        &mut self,
-        engines: Engines<'_>,
-        implementing_type: ty::TyDeclaration,
-    ) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
-        decl.replace_implementing_type(engines, implementing_type);
         decl_engine.replace(self, decl);
     }
 }

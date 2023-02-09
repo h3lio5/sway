@@ -146,66 +146,6 @@ impl TypeParameter {
         };
         ok(type_parameter, warnings, errors)
     }
-
-    /// Creates a [DeclMapping] from a list of [TypeParameter]s.
-    pub(crate) fn gather_decl_mapping_from_trait_constraints(
-        mut ctx: TypeCheckContext,
-        type_parameters: &[TypeParameter],
-        access_span: &Span,
-    ) -> CompileResult<DeclMapping> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
-        let mut original_method_refs: MethodMap = BTreeMap::new();
-        let mut impld_method_refs: MethodMap = BTreeMap::new();
-
-        for type_param in type_parameters.iter() {
-            let TypeParameter {
-                type_id,
-                trait_constraints,
-                ..
-            } = type_param;
-
-            // Check to see if the trait constraints are satisfied.
-            check!(
-                ctx.namespace
-                    .implemented_traits
-                    .check_if_trait_constraints_are_satisfied_for_type(
-                        *type_id,
-                        trait_constraints,
-                        access_span,
-                        ctx.engines()
-                    ),
-                continue,
-                warnings,
-                errors
-            );
-
-            for trait_constraint in trait_constraints.iter() {
-                let TraitConstraint {
-                    trait_name,
-                    type_arguments: trait_type_arguments,
-                } = trait_constraint;
-
-                let (trait_original_method_refs, trait_impld_method_refs) = check!(
-                    handle_trait(ctx.by_ref(), *type_id, trait_name, trait_type_arguments),
-                    continue,
-                    warnings,
-                    errors
-                );
-                original_method_refs.extend(trait_original_method_refs);
-                impld_method_refs.extend(trait_impld_method_refs);
-            }
-        }
-
-        if errors.is_empty() {
-            let decl_mapping =
-                DeclMapping::from_stub_and_impld_decl_refs(original_method_refs, impld_method_refs);
-            ok(decl_mapping, warnings, errors)
-        } else {
-            err(warnings, errors)
-        }
-    }
 }
 
 fn handle_trait(

@@ -2,7 +2,7 @@ use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{style::is_screaming_snake_case, Spanned};
 
 use crate::{
-    decl_engine::{DeclRef, ReplaceFunctionImplementingType},
+    decl_engine::*,
     error::*,
     language::{parsed, ty},
     semantic_analysis::TypeCheckContext,
@@ -234,10 +234,6 @@ impl ty::TyDeclaration {
                     decl_span: decl_ref.decl_span,
                 };
 
-                trait_decl
-                    .methods
-                    .iter_mut()
-                    .for_each(|method| method.replace_implementing_type(engines, decl.clone()));
                 check!(
                     ctx.namespace.insert_symbol(name, decl.clone()),
                     return err(warnings, errors),
@@ -248,7 +244,7 @@ impl ty::TyDeclaration {
             }
             parsed::Declaration::ImplTrait(impl_trait) => {
                 let span = impl_trait.block_span.clone();
-                let mut impl_trait = check!(
+                let impl_trait = check!(
                     ty::TyImplTrait::type_check_impl_trait(ctx.by_ref(), impl_trait),
                     return ok(ty::TyDeclaration::ErrorRecovery(span), warnings, errors),
                     warnings,
@@ -268,20 +264,17 @@ impl ty::TyDeclaration {
                     warnings,
                     errors
                 );
-                let decl_ref = decl_engine.insert(impl_trait.clone());
-                let impl_trait_decl = ty::TyDeclaration::ImplTrait {
+                let decl_ref = decl_engine.insert(impl_trait);
+
+                ty::TyDeclaration::ImplTrait {
                     name: decl_ref.name,
                     decl_id: decl_ref.id,
                     decl_span: decl_ref.decl_span,
-                };
-                impl_trait.methods.iter_mut().for_each(|method| {
-                    method.replace_implementing_type(engines, impl_trait_decl.clone())
-                });
-                impl_trait_decl
+                }
             }
             parsed::Declaration::ImplSelf(impl_self) => {
                 let span = impl_self.block_span.clone();
-                let mut impl_trait = check!(
+                let impl_trait = check!(
                     ty::TyImplTrait::type_check_impl_self(ctx.by_ref(), impl_self),
                     return ok(ty::TyDeclaration::ErrorRecovery(span), warnings, errors),
                     warnings,
@@ -301,16 +294,13 @@ impl ty::TyDeclaration {
                     warnings,
                     errors
                 );
-                let decl_ref = decl_engine.insert(impl_trait.clone());
-                let impl_trait_decl = ty::TyDeclaration::ImplTrait {
+                let decl_ref = decl_engine.insert(impl_trait);
+
+                ty::TyDeclaration::ImplTrait {
                     name: decl_ref.name,
                     decl_id: decl_ref.id,
                     decl_span: decl_ref.decl_span,
-                };
-                impl_trait.methods.iter_mut().for_each(|method| {
-                    method.replace_implementing_type(engines, impl_trait_decl.clone())
-                });
-                impl_trait_decl
+                }
             }
             parsed::Declaration::StructDeclaration(decl) => {
                 let span = decl.span.clone();
@@ -338,23 +328,19 @@ impl ty::TyDeclaration {
             }
             parsed::Declaration::AbiDeclaration(abi_decl) => {
                 let span = abi_decl.span.clone();
-                let mut abi_decl = check!(
+                let abi_decl = check!(
                     ty::TyAbiDeclaration::type_check(ctx.by_ref(), abi_decl),
                     return ok(ty::TyDeclaration::ErrorRecovery(span), warnings, errors),
                     warnings,
                     errors
                 );
                 let name = abi_decl.name.clone();
-                let decl_ref = decl_engine.insert(abi_decl.clone());
+                let decl_ref = decl_engine.insert(abi_decl);
                 let decl = ty::TyDeclaration::AbiDeclaration {
                     name: decl_ref.name,
                     decl_id: decl_ref.id,
                     decl_span: decl_ref.decl_span,
                 };
-                abi_decl
-                    .methods
-                    .iter_mut()
-                    .for_each(|method| method.replace_implementing_type(engines, decl.clone()));
                 check!(
                     ctx.namespace.insert_symbol(name, decl.clone()),
                     return err(warnings, errors),

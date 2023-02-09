@@ -1,14 +1,9 @@
-use std::{
-    fmt,
-    hash::{Hash, Hasher},
-};
+use std::fmt;
 
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{engine_threading::*, language::ty, type_system::*};
-
-use super::{DeclMapping, ReplaceDecls, ReplaceFunctionImplementingType};
 
 /// The [DeclEngine] type is used in the [DeclarationEngine] as a means of
 /// placing all declaration types into the same type.
@@ -33,61 +28,6 @@ impl Default for DeclWrapper {
     }
 }
 
-impl PartialEqWithEngines for DeclWrapper {
-    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
-        match (self, other) {
-            (DeclWrapper::Unknown, DeclWrapper::Unknown) => true,
-            (DeclWrapper::Function(l), DeclWrapper::Function(r)) => l.eq(r, type_engine),
-            (DeclWrapper::Trait(l), DeclWrapper::Trait(r)) => l.eq(r, type_engine),
-            (DeclWrapper::TraitFn(l), DeclWrapper::TraitFn(r)) => l.eq(r, type_engine),
-            (DeclWrapper::ImplTrait(l), DeclWrapper::ImplTrait(r)) => l.eq(r, type_engine),
-            (DeclWrapper::Struct(l), DeclWrapper::Struct(r)) => l.eq(r, type_engine),
-            (DeclWrapper::Storage(l), DeclWrapper::Storage(r)) => l.eq(r, type_engine),
-            (DeclWrapper::Abi(l), DeclWrapper::Abi(r)) => l.eq(r),
-            (DeclWrapper::Constant(l), DeclWrapper::Constant(r)) => l.eq(r, type_engine),
-            (DeclWrapper::Enum(l), DeclWrapper::Enum(r)) => l.eq(r, type_engine),
-            _ => false,
-        }
-    }
-}
-
-impl HashWithEngines for DeclWrapper {
-    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
-        use DeclWrapper::*;
-        std::mem::discriminant(self).hash(state);
-        match self {
-            Unknown => {}
-            Function(decl) => {
-                decl.hash(state, type_engine);
-            }
-            Trait(decl) => {
-                decl.hash(state, type_engine);
-            }
-            TraitFn(decl) => {
-                decl.hash(state, type_engine);
-            }
-            ImplTrait(decl) => {
-                decl.hash(state, type_engine);
-            }
-            Struct(decl) => {
-                decl.hash(state, type_engine);
-            }
-            Storage(decl) => {
-                decl.hash(state, type_engine);
-            }
-            Abi(decl) => {
-                decl.hash(state);
-            }
-            Constant(decl) => {
-                decl.hash(state, type_engine);
-            }
-            Enum(decl) => {
-                decl.hash(state, type_engine);
-            }
-        }
-    }
-}
-
 impl fmt::Display for DeclWrapper {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "decl({})", self.friendly_name())
@@ -107,35 +47,6 @@ impl SubstTypes for DeclWrapper {
             DeclWrapper::Abi(_) => {}
             DeclWrapper::Constant(_) => {}
             DeclWrapper::Enum(decl) => decl.subst(type_mapping, engines),
-        }
-    }
-}
-
-impl ReplaceDecls for DeclWrapper {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
-        if let DeclWrapper::Function(decl) = self {
-            decl.replace_decls(decl_mapping, engines);
-        }
-    }
-}
-
-impl ReplaceFunctionImplementingType for DeclWrapper {
-    fn replace_implementing_type(
-        &mut self,
-        _engines: Engines<'_>,
-        implementing_type: ty::TyDeclaration,
-    ) {
-        match self {
-            DeclWrapper::Function(decl) => decl.set_implementing_type(implementing_type),
-            DeclWrapper::Unknown
-            | DeclWrapper::Trait(_)
-            | DeclWrapper::TraitFn(_)
-            | DeclWrapper::ImplTrait(_)
-            | DeclWrapper::Struct(_)
-            | DeclWrapper::Storage(_)
-            | DeclWrapper::Abi(_)
-            | DeclWrapper::Constant(_)
-            | DeclWrapper::Enum(_) => {}
         }
     }
 }
