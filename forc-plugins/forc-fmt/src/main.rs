@@ -68,12 +68,9 @@ fn run() -> Result<()> {
         None => std::env::current_dir()?,
     };
 
-    let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&dir)?;
-    for (_, member_path) in manifest_file.member_manifests()? {
-        let member_dir = member_path.dir();
-        let mut formatter = Formatter::from_dir(member_dir)?;
-        format_pkg_at_dir(&app, &dir, &mut formatter)?;
-    }
+
+    let mut formatter = Formatter::from_dir(&dir)?;
+    format_pkg_at_dir(&app, &dir, &mut formatter)?;
 
     Ok(())
 }
