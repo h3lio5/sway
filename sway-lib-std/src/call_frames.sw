@@ -17,14 +17,6 @@ const FIRST_PARAMETER_OFFSET: u64 = 73;
 /// Where 74 (73 + 1) is the current offset in words from the start of the call frame.
 const SECOND_PARAMETER_OFFSET: u64 = 74;
 
-/// Get the `asset_id` of coins being sent from the current call frame.
-pub fn msg_asset_id() -> ContractId {
-    ContractId::from(asm(asset_id) {
-        addi asset_id fp i32;
-        asset_id: b256
-    })
-}
-
 /// Get the code size in bytes (padded to word alignment) from the current call frame.
 pub fn code_size() -> u64 {
     asm(size, ptr, offset: 576) {

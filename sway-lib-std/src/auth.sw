@@ -4,9 +4,9 @@ library auth;
 use ::address::Address;
 use ::contract_id::ContractId;
 use ::identity::Identity;
+use ::inputs::{Input, input_count, input_owner, input_type};
 use ::option::Option;
 use ::result::Result;
-use ::inputs::{Input, input_count, input_owner, input_type};
 
 pub enum AuthError {
     InputsNotAllOwnedBySameAddress: (),
@@ -31,20 +31,9 @@ pub fn caller_contract_id() -> ContractId {
     })
 }
 
-/// Get the `Identity` (i.e. `Address` or `ContractId`) from which a call was made.
-/// Returns a `Result::Ok(Identity)`, or `Result::Err(AuthError)` if an identity cannot be determined.
-pub fn msg_sender() -> Result<Identity, AuthError> {
-    if caller_is_external() {
-        inputs_owner()
-    } else {
-        // Get caller's `ContractId`.
-        Result::Ok(Identity::ContractId(caller_contract_id()))
-    }
-}
-
 /// Get the owner of the inputs (of type `Input::Coin` or `Input::Message`) to a
 /// `TransactionScript` if they all share the same owner.
-fn inputs_owner() -> Result<Identity, AuthError> {
+pub fn inputs_owner() -> Result<Identity, AuthError> {
     let inputs = input_count();
     let mut candidate = Option::None;
     let mut i = 0u8;
