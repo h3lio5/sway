@@ -17,15 +17,6 @@ const FIRST_PARAMETER_OFFSET: u64 = 73;
 /// Where 74 (73 + 1) is the current offset in words from the start of the call frame.
 const SECOND_PARAMETER_OFFSET: u64 = 74;
 
-//  Accessing the current call frame
-//
-/// Get the current contract's id when called in an internal context.
-/// **_Note:_** If called in an external context, this will **not** return a contract ID.
-// @dev If called externally, will actually return a pointer to the transaction ID.
-pub fn contract_id() -> ContractId {
-    ContractId::from(asm() { fp: b256 })
-}
-
 /// Get the `asset_id` of coins being sent from the current call frame.
 pub fn msg_asset_id() -> ContractId {
     ContractId::from(asm(asset_id) {

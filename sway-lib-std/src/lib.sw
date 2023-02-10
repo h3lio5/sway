@@ -29,7 +29,7 @@ dep outputs;
 dep auth;
 dep math;
 dep block;
-dep token;
+dep contracts;
 dep ecr;
 dep vm/mod;
 dep flags;

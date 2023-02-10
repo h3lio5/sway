@@ -1,13 +1,34 @@
-//! Functionality for performing common operations with tokens.
-library token;
+//!Functionality that is either logically related to or only usable in the context of contracts, such as performing common operations with tokens or querying the current contract's state.
+library contracts;
 
 use ::address::Address;
-use ::call_frames::contract_id;
 use ::contract_id::ContractId;
 use ::error_signals::FAILED_TRANSFER_TO_ADDRESS_SIGNAL;
 use ::identity::Identity;
 use ::revert::revert;
 use ::outputs::{Output, output_amount, output_count, output_type};
+
+/// Get the balance of coin `asset_id` for the current contract.
+pub fn this_balance(asset_id: ContractId) -> u64 {
+    balance_of(asset_id, contract_id())
+}
+
+/// Get the balance of coin `asset_id` for for the contract at 'target'.
+pub fn balance_of(asset_id: ContractId, target: ContractId) -> u64 {
+    asm(balance, token: asset_id.value, id: target.value) {
+        bal balance token id;
+        balance: u64
+    }
+}
+
+/// Get the current contract's id when called in an internal context.
+/// **_Note:_** If called in an external context, this will **not** return a contract ID.
+// @dev If called externally, will actually return a pointer to the transaction ID.
+pub fn contract_id() -> ContractId {
+    ContractId::from(asm() { fp: b256 })
+}
+
+// currently in token.sw
 
 /// Mint `amount` coins of the current contract's `asset_id` and transfer them
 /// to `to` by calling either `force_transfer_to_contract` or
