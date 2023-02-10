@@ -1,4 +1,5 @@
-//!Functionality that is either logically related to or only usable in the context of contracts, such as performing common operations with tokens or querying the current contract's state.
+//!Functionality that is either logically related to or only usable in the context of contracts,
+//!such as performing common operations with tokens or querying the current contract's state.
 library contracts;
 
 use ::address::Address;
