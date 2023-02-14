@@ -28,14 +28,6 @@ impl DeclRef {
         }
     }
 
-    pub(crate) fn with_parent<'a, T>(self, decl_engine: &DeclEngine, parent: &'a T) -> DeclRef
-    where
-        DeclId: From<&'a T>,
-    {
-        decl_engine.register_parent::<T>(&self, parent);
-        self
-    }
-
     pub(crate) fn replace_id(&mut self, index: DeclId) {
         self.id.replace_id(index);
     }
@@ -48,9 +40,7 @@ impl DeclRef {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
         decl.subst(type_mapping, engines);
-        decl_engine
-            .insert_wrapper(self.name.clone(), decl, self.decl_span.clone())
-            .with_parent(decl_engine, self)
+        decl_engine.insert_wrapper(self.name.clone(), decl, self.decl_span.clone())
     }
 }
 

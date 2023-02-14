@@ -575,9 +575,11 @@ impl TraitMap {
                             // decl.replace_self_type(engines, new_self_type);
                             (
                                 name,
-                                decl_engine
-                                    .insert_wrapper(decl_ref.name.clone(), decl, decl_ref.span())
-                                    .with_parent(decl_engine, &decl_ref),
+                                decl_engine.insert_wrapper(
+                                    decl_ref.name.clone(),
+                                    decl,
+                                    decl_ref.span(),
+                                ),
                             )
                         })
                         .collect();

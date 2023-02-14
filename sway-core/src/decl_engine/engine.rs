@@ -1,8 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet, VecDeque},
-    fmt,
-    sync::RwLock,
-};
+use std::fmt;
 
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span};
@@ -17,7 +13,6 @@ use crate::{
 #[derive(Debug, Default)]
 pub struct DeclEngine {
     slab: ConcurrentSlab<DeclWrapper>,
-    parents: RwLock<HashMap<DeclId, Vec<DeclId>>>,
 }
 
 impl fmt::Display for DeclEngine {
@@ -59,50 +54,6 @@ impl DeclEngine {
         span: Span,
     ) -> DeclRef {
         DeclRef::new(ident, self.slab.insert(decl_wrapper), span)
-    }
-
-    /// Given a [DeclRef] `index`, finds all the parents of `index` and all the
-    /// recursive parents of those parents, and so on. Does not perform
-    /// duplicated computation---if the parents of a [DeclRef] have already been
-    /// found, we do not find them again.
-    #[allow(clippy::map_entry)]
-    pub(crate) fn find_all_parents<'a, T>(&self, index: &'a T) -> Vec<DeclId>
-    where
-        DeclId: From<&'a T>,
-    {
-        let parents = self.parents.read().unwrap();
-        let mut acc_parents: HashMap<DeclId, DeclId> = HashMap::new();
-        let mut already_checked: HashSet<DeclId> = HashSet::new();
-        let mut left_to_check: VecDeque<DeclId> = VecDeque::from([DeclId::from(index)]);
-        while let Some(curr) = left_to_check.pop_front() {
-            if !already_checked.insert(curr) {
-                continue;
-            }
-            if let Some(curr_parents) = parents.get(&curr) {
-                for curr_parent in curr_parents.iter() {
-                    if !acc_parents.contains_key(curr_parent) {
-                        acc_parents.insert(*curr_parent, *curr_parent);
-                    }
-                    if !left_to_check.iter().any(|x| x == curr_parent) {
-                        left_to_check.push_back(*curr_parent);
-                    }
-                }
-            }
-        }
-        acc_parents.values().cloned().collect()
-    }
-
-    pub(crate) fn register_parent<'a, T>(&self, index: &DeclRef, parent: &'a T)
-    where
-        DeclId: From<&'a T>,
-    {
-        let index: DeclId = index.into();
-        let parent: DeclId = DeclId::from(parent);
-        let mut parents = self.parents.write().unwrap();
-        parents
-            .entry(index)
-            .and_modify(|e| e.push(parent))
-            .or_insert_with(|| vec![parent]);
     }
 
     pub fn get_function<'a, T>(

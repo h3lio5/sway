@@ -278,10 +278,7 @@ impl TypeBinding<CallPath> {
                 // insert the new copy into the declaration engine
                 let DeclRef {
                     id: new_decl_id, ..
-                } = ctx
-                    .decl_engine
-                    .insert(new_copy)
-                    .with_parent(ctx.decl_engine, &original_id);
+                } = ctx.decl_engine.insert(new_copy);
 
                 ty::TyDeclaration::FunctionDeclaration {
                     name,

@@ -1335,11 +1335,7 @@ impl ty::TyExpression {
                 warnings,
                 errors
             );
-            abi_methods.push(
-                decl_engine
-                    .insert(method.to_dummy_func(Mode::ImplAbiFn))
-                    .with_parent(decl_engine, &decl_ref),
-            );
+            abi_methods.push(decl_engine.insert(method.to_dummy_func(Mode::ImplAbiFn)));
         }
 
         // Retrieve the methods for this abi.

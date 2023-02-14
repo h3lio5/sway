@@ -77,11 +77,7 @@ impl ty::TyTraitDeclaration {
                 errors
             );
             let decl_ref = decl_engine.insert(method.clone());
-            dummy_interface_surface.push(
-                decl_engine
-                    .insert(method.to_dummy_func(Mode::NonAbi))
-                    .with_parent(decl_engine, &decl_ref),
-            );
+            dummy_interface_surface.push(decl_engine.insert(method.to_dummy_func(Mode::NonAbi)));
             new_interface_surface.push(decl_ref);
         }
 
@@ -223,12 +219,7 @@ impl ty::TyTraitDeclaration {
                 errors
             );
             method.subst(&type_mapping, engines);
-            impld_method_refs.insert(
-                method.name.clone(),
-                decl_engine
-                    .insert(method)
-                    .with_parent(decl_engine, &decl_ref),
-            );
+            impld_method_refs.insert(method.name.clone(), decl_engine.insert(method));
         }
 
         ok(
@@ -287,11 +278,7 @@ impl ty::TyTraitDeclaration {
             todo!();
             // method.replace_self_type(engines, type_id);
             method.subst(&type_mapping, engines);
-            all_methods.push(
-                ctx.decl_engine
-                    .insert(method.to_dummy_func(Mode::NonAbi))
-                    .with_parent(ctx.decl_engine, decl_ref),
-            );
+            all_methods.push(ctx.decl_engine.insert(method.to_dummy_func(Mode::NonAbi)));
         }
         for decl_ref in methods.iter() {
             let mut method = check!(
@@ -303,11 +290,7 @@ impl ty::TyTraitDeclaration {
             todo!();
             // method.replace_self_type(engines, type_id);
             method.subst(&type_mapping, engines);
-            all_methods.push(
-                ctx.decl_engine
-                    .insert(method)
-                    .with_parent(ctx.decl_engine, decl_ref),
-            );
+            all_methods.push(ctx.decl_engine.insert(method));
         }
 
         // Insert the methods of the trait into the namespace.
