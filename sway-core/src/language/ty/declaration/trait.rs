@@ -27,9 +27,11 @@ impl PartialEqWithEngines for TyTraitDeclaration {
     fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
             && self.type_parameters.eq(&other.type_parameters, type_engine)
-            && self.interface_surface == other.interface_surface
-            && self.methods == other.methods
-            && self.supertraits == other.supertraits
+            && self
+                .interface_surface
+                .eq(&other.interface_surface, type_engine)
+            && self.methods.eq(&other.methods, type_engine)
+            && self.supertraits.eq(&other.supertraits, type_engine)
             && self.visibility == other.visibility
     }
 }
@@ -50,9 +52,9 @@ impl HashWithEngines for TyTraitDeclaration {
         } = self;
         name.hash(state);
         type_parameters.hash(state, type_engine);
-        interface_surface.hash(state);
-        methods.hash(state);
-        supertraits.hash(state);
+        interface_surface.hash(state, type_engine);
+        methods.hash(state, type_engine);
+        supertraits.hash(state, type_engine);
         visibility.hash(state);
     }
 }

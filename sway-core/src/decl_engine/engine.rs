@@ -44,7 +44,7 @@ impl DeclEngine {
         T: Into<(Ident, DeclWrapper, Span)>,
     {
         let (ident, decl_wrapper, span) = decl.into();
-        DeclRef::new(ident, self.slab.insert(decl_wrapper), span)
+        DeclRef::new(ident, self.slab.insert(decl_wrapper), todo!(), span)
     }
 
     pub(crate) fn insert_wrapper(
@@ -53,7 +53,7 @@ impl DeclEngine {
         decl_wrapper: DeclWrapper,
         span: Span,
     ) -> DeclRef {
-        DeclRef::new(ident, self.slab.insert(decl_wrapper), span)
+        DeclRef::new(ident, self.slab.insert(decl_wrapper), todo!(), span)
     }
 
     pub fn get_function<'a, T>(

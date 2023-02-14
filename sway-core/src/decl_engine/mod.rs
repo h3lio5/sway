@@ -12,6 +12,7 @@
 pub(crate) mod engine;
 pub mod id;
 pub(crate) mod r#ref;
+pub(crate) mod template;
 pub(crate) mod wrapper;
 
 use std::collections::BTreeMap;
@@ -20,6 +21,7 @@ pub use engine::*;
 pub(crate) use id::*;
 pub use r#ref::*;
 use sway_types::Ident;
+pub(crate) use template::*;
 pub(crate) use wrapper::*;
 
 pub(crate) type MethodMap = BTreeMap<Ident, DeclRef>;

@@ -1,9 +1,14 @@
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
 
-use super::{FunctionDeclaration, FunctionParameter};
-
-use crate::{decl_engine::DeclRef, language::*, transform, type_system::*};
 use sway_types::{ident::Ident, span::Span, Spanned};
+
+use crate::{
+    decl_engine::*,
+    engine_threading::*,
+    language::{parsed::*, *},
+    transform,
+    type_system::*,
+};
 
 #[derive(Debug, Clone)]
 pub struct TraitDeclaration {
@@ -17,7 +22,7 @@ pub struct TraitDeclaration {
     pub span: Span,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone)]
 pub struct Supertrait {
     pub name: CallPath,
     pub decl_ref: Option<DeclRef>,
@@ -26,6 +31,29 @@ pub struct Supertrait {
 impl Spanned for Supertrait {
     fn span(&self) -> Span {
         self.name.span()
+    }
+}
+
+impl EqWithEngines for Supertrait {}
+impl PartialEqWithEngines for Supertrait {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+        let Supertrait {
+            name: ln,
+            decl_ref: ldr,
+        } = self;
+        let Supertrait {
+            name: rn,
+            decl_ref: rdr,
+        } = other;
+        ln == rn && ldr.eq(rdr, type_engine)
+    }
+}
+
+impl HashWithEngines for Supertrait {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        let Supertrait { name, decl_ref } = self;
+        name.hash(state);
+        decl_ref.hash(state, type_engine);
     }
 }
 

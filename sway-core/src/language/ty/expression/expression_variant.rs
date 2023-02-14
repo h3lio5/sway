@@ -156,7 +156,7 @@ impl PartialEqWithEngines for TyExpressionVariant {
                         .iter()
                         .zip(r_arguments.iter())
                         .all(|((xa, xb), (ya, yb))| xa == ya && xb.eq(yb, type_engine))
-                    && l_function_decl_ref == r_function_decl_ref
+                    && l_function_decl_ref.eq(r_function_decl_ref, type_engine)
             }
             (
                 Self::LazyOperator {
@@ -398,7 +398,7 @@ impl HashWithEngines for TyExpressionVariant {
                 type_binding: _,
             } => {
                 call_path.hash(state);
-                function_decl_ref.hash(state);
+                function_decl_ref.hash(state, type_engine);
                 arguments.iter().for_each(|(name, arg)| {
                     name.hash(state);
                     arg.hash(state, type_engine);

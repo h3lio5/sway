@@ -25,26 +25,31 @@ pub enum TyDeclaration {
     FunctionDeclaration {
         name: Ident,
         decl_id: DeclId,
+        type_subst_list: Template<TypeSubstList>,
         decl_span: Span,
     },
     TraitDeclaration {
         name: Ident,
         decl_id: DeclId,
+        type_subst_list: Template<TypeSubstList>,
         decl_span: Span,
     },
     StructDeclaration {
         name: Ident,
         decl_id: DeclId,
+        type_subst_list: Template<TypeSubstList>,
         decl_span: Span,
     },
     EnumDeclaration {
         name: Ident,
         decl_id: DeclId,
+        type_subst_list: Template<TypeSubstList>,
         decl_span: Span,
     },
     ImplTrait {
         name: Ident,
         decl_id: DeclId,
+        type_subst_list: Template<TypeSubstList>,
         decl_span: Span,
     },
     AbiDeclaration {
@@ -340,29 +345,39 @@ impl GetDeclRef for TyDeclaration {
             TyDeclaration::FunctionDeclaration {
                 name,
                 decl_id,
-                decl_span,
-            }
-            | TyDeclaration::ConstantDeclaration {
-                name,
-                decl_id,
+                type_subst_list,
                 decl_span,
             }
             | TyDeclaration::TraitDeclaration {
                 name,
                 decl_id,
+                type_subst_list,
                 decl_span,
             }
             | TyDeclaration::StructDeclaration {
                 name,
                 decl_id,
+                type_subst_list,
                 decl_span,
             }
             | TyDeclaration::EnumDeclaration {
                 name,
                 decl_id,
+                type_subst_list,
                 decl_span,
             }
             | TyDeclaration::ImplTrait {
+                name,
+                decl_id,
+                type_subst_list,
+                decl_span,
+            } => Some(DeclRef::new(
+                name.clone(),
+                **decl_id,
+                type_subst_list.fresh_copy(),
+                decl_span.clone(),
+            )),
+            TyDeclaration::ConstantDeclaration {
                 name,
                 decl_id,
                 decl_span,
@@ -371,7 +386,12 @@ impl GetDeclRef for TyDeclaration {
                 name,
                 decl_id,
                 decl_span,
-            } => Some(DeclRef::new(name.clone(), **decl_id, decl_span.clone())),
+            } => Some(DeclRef::new(
+                name.clone(),
+                **decl_id,
+                TypeSubstList::new(),
+                decl_span.clone(),
+            )),
             TyDeclaration::GenericTypeForFunctionScope { .. } => None,
             TyDeclaration::ErrorRecovery(_) => None,
             TyDeclaration::StorageDeclaration { .. } => None,

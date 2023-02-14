@@ -3,7 +3,6 @@ use std::hash::{Hash, Hasher};
 use sha2::{Digest, Sha256};
 
 use crate::{
-    decl_engine::*,
     engine_threading::*,
     error::*,
     language::{parsed, ty::*, Inline, Purity, Visibility},

@@ -165,6 +165,7 @@ impl ty::TyImplTrait {
                     trait_decl_ref: Some(DeclRef::new(
                         trait_decl.name.clone(),
                         *decl_id,
+                        todo!(),
                         trait_decl.span.clone(),
                     )),
                     span: block_span,
@@ -216,11 +217,13 @@ impl ty::TyImplTrait {
                     warnings,
                     errors
                 );
+                let trait_decl_ref =
+                    Some(DeclRef::new(abi.name.clone(), *decl_id, todo!(), abi.span));
                 ty::TyImplTrait {
                     impl_type_parameters: vec![], // this is empty because abi definitions don't support generics
                     trait_name,
                     trait_type_arguments: vec![], // this is empty because abi definitions don't support generics
-                    trait_decl_ref: Some(DeclRef::new(abi.name.clone(), *decl_id, abi.span)),
+                    trait_decl_ref,
                     span: block_span,
                     methods: new_methods,
                     implementing_for_type_id,

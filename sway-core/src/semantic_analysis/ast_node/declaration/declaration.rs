@@ -167,6 +167,7 @@ impl ty::TyDeclaration {
                 let decl = ty::TyDeclaration::EnumDeclaration {
                     name: decl_ref.name,
                     decl_id: decl_ref.id,
+                    type_subst_list: todo!(),
                     decl_span: decl_ref.decl_span,
                 };
                 check!(
@@ -191,6 +192,7 @@ impl ty::TyDeclaration {
                 let decl = ty::TyDeclaration::FunctionDeclaration {
                     name: decl_ref.name,
                     decl_id: decl_ref.id,
+                    type_subst_list: todo!(),
                     decl_span: decl_ref.decl_span,
                 };
                 ctx.namespace.insert_symbol(name, decl.clone());
@@ -215,12 +217,14 @@ impl ty::TyDeclaration {
                             if let ty::TyDeclaration::TraitDeclaration {
                                 name: supertrait_name,
                                 decl_id: supertrait_decl_id,
+                                type_subst_list,
                                 decl_span: supertrait_decl_span,
                             } = supertrait_decl
                             {
                                 supertrait.decl_ref = Some(DeclRef::new(
                                     supertrait_name,
                                     *supertrait_decl_id,
+                                    todo!(),
                                     supertrait_decl_span,
                                 ));
                             }
@@ -231,6 +235,7 @@ impl ty::TyDeclaration {
                 let decl = ty::TyDeclaration::TraitDeclaration {
                     name: decl_ref.name,
                     decl_id: decl_ref.id,
+                    type_subst_list: todo!(),
                     decl_span: decl_ref.decl_span,
                 };
 
@@ -269,6 +274,7 @@ impl ty::TyDeclaration {
                 ty::TyDeclaration::ImplTrait {
                     name: decl_ref.name,
                     decl_id: decl_ref.id,
+                    type_subst_list: todo!(),
                     decl_span: decl_ref.decl_span,
                 }
             }
@@ -299,6 +305,7 @@ impl ty::TyDeclaration {
                 ty::TyDeclaration::ImplTrait {
                     name: decl_ref.name,
                     decl_id: decl_ref.id,
+                    type_subst_list: todo!(),
                     decl_span: decl_ref.decl_span,
                 }
             }
@@ -315,6 +322,7 @@ impl ty::TyDeclaration {
                 let decl = ty::TyDeclaration::StructDeclaration {
                     name: decl_ref.name,
                     decl_id: decl_ref.id,
+                    type_subst_list: todo!(),
                     decl_span: decl_ref.decl_span,
                 };
                 // insert the struct decl into namespace

@@ -14,16 +14,33 @@ pub struct TyAbiDeclaration {
     pub attributes: transform::AttributesMap,
 }
 
-impl PartialEq for TyAbiDeclaration {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && self.interface_surface == other.interface_surface
-            && self.methods == other.methods
+impl EqWithEngines for TyAbiDeclaration {}
+impl PartialEqWithEngines for TyAbiDeclaration {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+        let TyAbiDeclaration {
+            name: ln,
+            interface_surface: lis,
+            methods: lm,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            attributes: _,
+            span: _,
+        } = self;
+        let TyAbiDeclaration {
+            name: rn,
+            interface_surface: ris,
+            methods: rm,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            attributes: _,
+            span: _,
+        } = other;
+        ln == rn && lis.eq(ris, type_engine) && lm.eq(rm, type_engine)
     }
 }
 
-impl Hash for TyAbiDeclaration {
-    fn hash<H: Hasher>(&self, state: &mut H) {
+impl HashWithEngines for TyAbiDeclaration {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         let TyAbiDeclaration {
             name,
             interface_surface,
@@ -34,8 +51,8 @@ impl Hash for TyAbiDeclaration {
             span: _,
         } = self;
         name.hash(state);
-        interface_surface.hash(state);
-        methods.hash(state);
+        interface_surface.hash(state, type_engine);
+        methods.hash(state, type_engine);
     }
 }
 

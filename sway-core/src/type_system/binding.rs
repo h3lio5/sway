@@ -250,6 +250,7 @@ impl TypeBinding<CallPath> {
             ty::TyDeclaration::FunctionDeclaration {
                 decl_id: original_id,
                 name,
+                type_subst_list,
                 decl_span,
             } => {
                 // get the copy from the declaration engine
@@ -283,11 +284,13 @@ impl TypeBinding<CallPath> {
                 ty::TyDeclaration::FunctionDeclaration {
                     name,
                     decl_id: new_decl_id,
+                    type_subst_list,
                     decl_span,
                 }
             }
             ty::TyDeclaration::EnumDeclaration {
                 decl_id: original_id,
+                type_subst_list,
                 name,
                 decl_span,
             } => {
@@ -326,11 +329,13 @@ impl TypeBinding<CallPath> {
                 ty::TyDeclaration::EnumDeclaration {
                     name,
                     decl_id: new_decl_id,
+                    type_subst_list: todo!(),
                     decl_span,
                 }
             }
             ty::TyDeclaration::StructDeclaration {
                 decl_id: original_id,
+                type_subst_list,
                 name,
                 decl_span,
             } => {
@@ -369,6 +374,7 @@ impl TypeBinding<CallPath> {
                 ty::TyDeclaration::StructDeclaration {
                     name,
                     decl_id: new_decl_id,
+                    type_subst_list: todo!(),
                     decl_span,
                 }
             }

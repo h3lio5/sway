@@ -1,4 +1,10 @@
-use std::{collections::BTreeMap, fmt};
+use std::{
+    collections::BTreeMap,
+    fmt,
+    hash::Hasher,
+    slice::{Iter, IterMut},
+    vec::IntoIter,
+};
 
 use super::*;
 use crate::engine_threading::*;
@@ -10,6 +16,184 @@ pub(crate) trait SubstTypes {
         if !type_mapping.is_empty() {
             self.subst_inner(type_mapping, engines);
         }
+    }
+}
+
+pub(crate) trait FinalizeTypes {
+    fn finalize_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList);
+
+    fn finalize(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
+        if !subst_list.is_empty() {
+            self.finalize_inner(engines, subst_list);
+        }
+    }
+}
+
+/// A list of types that serve as the list of type params for type substitution.
+/// Any types of the [TypeParam][TypeInfo::TypeParam] variant will point to an index in
+/// this list.
+#[derive(Debug, Clone, Default)]
+pub struct TypeSubstList {
+    list: Vec<TypeParameter>,
+}
+
+impl TypeSubstList {
+    pub(crate) fn new() -> TypeSubstList {
+        TypeSubstList { list: vec![] }
+    }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        self.list.is_empty()
+    }
+
+    pub(crate) fn len(&self) -> usize {
+        self.list.len()
+    }
+
+    pub(crate) fn push(&mut self, type_param: TypeParameter) {
+        self.list.push(type_param);
+    }
+
+    pub(crate) fn iter(&self) -> Iter<'_, TypeParameter> {
+        self.list.iter()
+    }
+
+    pub(crate) fn into_iter(self) -> IntoIter<TypeParameter> {
+        self.list.into_iter()
+    }
+
+    pub(crate) fn iter_mut(&mut self) -> IterMut<'_, TypeParameter> {
+        self.list.iter_mut()
+    }
+
+    // pub(crate) fn find_match(&self, engines: Engines<'_>, type_id: TypeId) -> Option<TypeId> {
+    //     let type_engine = engines.te();
+    //     match type_engine.get(type_id) {
+    //         TypeInfo::TypeParam(n) if n < self.list.len() => {
+    //             self.list.get(n).map(|type_param| type_param.type_id)
+    //         }
+    //         TypeInfo::TypeParam(_) => panic!("tried an out of bounds substitution"),
+    //         _ => None,
+    //     }
+    // }
+
+    // #[allow(clippy::too_many_arguments)]
+    // pub(crate) fn monomorphize(
+    //     &mut self,
+    //     engines: Engines<'_>,
+    //     type_arguments: &mut [TypeArgument],
+    //     enforce_type_arguments: EnforceTypeArguments,
+    //     obj_name: &Ident,
+    //     call_site_span: &Span,
+    //     namespace: &mut Namespace,
+    //     mod_path: &Path,
+    // ) -> CompileResult<()> {
+    //     let mut warnings = vec![];
+    //     let mut errors = vec![];
+
+    //     let type_engine = engines.te();
+    //     let decl_engine = engines.de();
+
+    //     match (self.is_empty(), type_arguments.is_empty()) {
+    //         (true, true) => ok((), warnings, errors),
+    //         (false, true) => {
+    //             if let EnforceTypeArguments::Yes = enforce_type_arguments {
+    //                 errors.push(CompileError::NeedsTypeArguments {
+    //                     name: obj_name.clone(),
+    //                     span: call_site_span.clone(),
+    //                 });
+    //                 return err(warnings, errors);
+    //             }
+    //             ok((), warnings, errors)
+    //         }
+    //         (true, false) => {
+    //             let type_arguments_span = type_arguments
+    //                 .iter()
+    //                 .map(|x| x.span.clone())
+    //                 .reduce(Span::join)
+    //                 .unwrap_or_else(|| obj_name.span());
+    //             errors.push(CompileError::DoesNotTakeTypeArguments {
+    //                 name: obj_name.clone(),
+    //                 span: type_arguments_span,
+    //             });
+    //             err(warnings, errors)
+    //         }
+    //         (false, false) => {
+    //             let type_arguments_span = type_arguments
+    //                 .iter()
+    //                 .map(|x| x.span.clone())
+    //                 .reduce(Span::join)
+    //                 .unwrap_or_else(|| obj_name.span());
+    //             if self.len() != type_arguments.len() {
+    //                 errors.push(CompileError::IncorrectNumberOfTypeArguments {
+    //                     given: type_arguments.len(),
+    //                     expected: self.len(),
+    //                     span: type_arguments_span,
+    //                 });
+    //                 return err(warnings, errors);
+    //             }
+    //             for type_argument in type_arguments.iter_mut() {
+    //                 type_argument.type_id = check!(
+    //                     type_engine.resolve(
+    //                         decl_engine,
+    //                         type_argument.type_id,
+    //                         &type_argument.span,
+    //                         enforce_type_arguments,
+    //                         None,
+    //                         namespace,
+    //                         mod_path
+    //                     ),
+    //                     type_engine.insert(TypeInfo::ErrorRecovery),
+    //                     warnings,
+    //                     errors
+    //                 );
+    //             }
+    //             self.subst2(type_arguments);
+    //             ok((), warnings, errors)
+    //         }
+    //     }
+    // }
+
+    // /// Substitutes the values in this [TypeSubstList] with the values in the
+    // /// given list of [TypeArgument]s.
+    // ///
+    // /// NOTE: This method assumes that the length of `self` and `type_arguments`
+    // /// is equal.
+    // fn subst2(&mut self, type_arguments: &[TypeArgument]) {
+    //     self.iter_mut()
+    //         .zip(type_arguments.iter())
+    //         .for_each(|(type_param, type_arg)| {
+    //             type_param.type_id = type_arg.type_id;
+    //         });
+    // }
+}
+
+impl std::iter::FromIterator<TypeParameter> for TypeSubstList {
+    fn from_iter<T: IntoIterator<Item = TypeParameter>>(iter: T) -> Self {
+        TypeSubstList {
+            list: iter.into_iter().collect::<Vec<TypeParameter>>(),
+        }
+    }
+}
+
+impl EqWithEngines for TypeSubstList {}
+impl PartialEqWithEngines for TypeSubstList {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+        self.list.eq(&other.list, type_engine)
+    }
+}
+
+impl HashWithEngines for TypeSubstList {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        self.list.hash(state, type_engine);
+    }
+}
+
+impl SubstTypes for TypeSubstList {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.list
+            .iter_mut()
+            .for_each(|x| x.subst(type_mapping, engines));
     }
 }
 

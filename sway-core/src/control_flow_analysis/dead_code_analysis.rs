@@ -839,6 +839,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                             ty::TyDeclaration::FunctionDeclaration {
                                 name: function_decl_ref.name.clone(),
                                 decl_id: function_decl_ref.id,
+                                type_subst_list: todo!(),
                                 decl_span: function_decl_ref.decl_span.clone(),
                             },
                         ),

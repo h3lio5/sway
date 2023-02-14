@@ -15,15 +15,25 @@ pub struct DeclRef {
     /// The index into the [DeclEngine].
     pub id: DeclId,
 
+    /// The type substitution list to apply to the `id` field for type
+    /// monomorphization.
+    pub(crate) subst_list: TypeSubstList,
+
     /// The [Span] of the entire declaration.
     pub decl_span: Span,
 }
 
 impl DeclRef {
-    pub(crate) fn new(name: Ident, id: usize, decl_span: Span) -> DeclRef {
+    pub(crate) fn new(
+        name: Ident,
+        id: usize,
+        subst_list: TypeSubstList,
+        decl_span: Span,
+    ) -> DeclRef {
         DeclRef {
             name,
             id: DeclId::new(id),
+            subst_list,
             decl_span,
         }
     }
@@ -44,11 +54,13 @@ impl DeclRef {
     }
 }
 
-impl PartialEq for DeclRef {
-    fn eq(&self, other: &Self) -> bool {
+impl EqWithEngines for DeclRef {}
+impl PartialEqWithEngines for DeclRef {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         let DeclRef {
             name: ln,
             id: lid,
+            subst_list: lsl,
             // these fields are not used in comparison because they aren't
             // relevant/a reliable source of obj v. obj distinction
             decl_span: _,
@@ -56,27 +68,28 @@ impl PartialEq for DeclRef {
         let DeclRef {
             name: rn,
             id: rid,
+            subst_list: rsl,
             // these fields are not used in comparison because they aren't
             // relevant/a reliable source of obj v. obj distinction
             decl_span: _,
         } = other;
-        ln == rn && lid == rid
+        ln == rn && lid == rid && lsl.eq(rsl, type_engine)
     }
 }
 
-impl Eq for DeclRef {}
-
-impl Hash for DeclRef {
-    fn hash<H: Hasher>(&self, state: &mut H) {
+impl HashWithEngines for DeclRef {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         let DeclRef {
             name,
             id,
+            subst_list,
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
             decl_span: _,
         } = self;
         name.hash(state);
         id.hash(state);
+        subst_list.hash(state, type_engine);
     }
 }
 

@@ -68,6 +68,7 @@ impl TyProgram {
                 TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration {
                     name,
                     decl_id,
+                    type_subst_list,
                     decl_span,
                 }) => {
                     let func = check!(
@@ -91,6 +92,7 @@ impl TyProgram {
                     declarations.push(TyDeclaration::FunctionDeclaration {
                         name: name.clone(),
                         decl_id: *decl_id,
+                        type_subst_list: todo!(),
                         decl_span: decl_span.clone(),
                     });
                 }
