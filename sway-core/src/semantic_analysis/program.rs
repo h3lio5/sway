@@ -2,6 +2,7 @@ use crate::{
     error::*,
     language::{parsed::ParseProgram, ty},
     metadata::MetadataManager,
+    monomorphize,
     semantic_analysis::{
         namespace::{self, Namespace},
         TypeCheckContext,
@@ -26,18 +27,20 @@ impl ty::TyProgram {
         let ParseProgram { root, kind } = parsed;
         let mod_span = root.tree.span.clone();
         let mod_res = ty::TyModule::type_check(ctx, root);
-        mod_res.flat_map(|root| {
-            let res = Self::validate_root(engines, &root, kind.clone(), mod_span);
-            res.map(|(kind, declarations, configurables)| Self {
-                kind,
-                root,
-                declarations,
-                configurables,
-                storage_slots: vec![],
-                logged_types: vec![],
-                messages_types: vec![],
+        mod_res
+            .flat_map(|mut root| monomorphize::monomorphize(engines, &mut root).map(|_| root))
+            .flat_map(|root| {
+                let res = Self::validate_root(engines, &root, kind.clone(), mod_span);
+                res.map(|(kind, declarations, configurables)| Self {
+                    kind,
+                    root,
+                    declarations,
+                    configurables,
+                    storage_slots: vec![],
+                    logged_types: vec![],
+                    messages_types: vec![],
+                })
             })
-        })
     }
 
     pub(crate) fn get_typed_program_with_initialized_storage_slots(
