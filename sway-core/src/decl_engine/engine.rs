@@ -1,18 +1,22 @@
-use std::fmt;
+use hashbrown::{hash_map::RawEntryMut, HashMap};
+use std::{fmt, sync::RwLock};
 
 use sway_error::error::CompileError;
-use sway_types::{Ident, Span};
+use sway_types::Span;
 
 use crate::{
     concurrent_slab::{ConcurrentSlab, ListDisplay},
     decl_engine::*,
+    engine_threading::*,
     language::ty,
+    TypeEngine,
 };
 
 /// Used inside of type inference to store declarations.
 #[derive(Debug, Default)]
 pub struct DeclEngine {
     slab: ConcurrentSlab<DeclWrapper>,
+    id_map: RwLock<HashMap<DeclWrapper, DeclId>>,
 }
 
 impl fmt::Display for DeclEngine {
@@ -39,21 +43,41 @@ impl DeclEngine {
         self.slab.replace(DeclId::from(index), wrapper);
     }
 
-    pub(crate) fn insert<T>(&self, decl: T) -> DeclRef
+    pub(crate) fn insert<T>(&self, type_engine: &TypeEngine, decl: T) -> DeclId
     where
         T: Into<(Ident, DeclWrapper, Span)>,
     {
-        let (ident, decl_wrapper, span) = decl.into();
-        DeclRef::new(ident, self.slab.insert(decl_wrapper), todo!(), span)
+        let (_, decl_wrapper, span) = decl.into();
+        self.insert_wrapper(type_engine, decl_wrapper, span)
     }
 
     pub(crate) fn insert_wrapper(
         &self,
-        ident: Ident,
+        type_engine: &TypeEngine,
         decl_wrapper: DeclWrapper,
         span: Span,
-    ) -> DeclRef {
-        DeclRef::new(ident, self.slab.insert(decl_wrapper), todo!(), span)
+    ) -> DeclId {
+        let mut id_map = self.id_map.write().unwrap();
+
+        let hash_builder = id_map.hasher().clone();
+        let decl_hash = make_hasher(&hash_builder, type_engine)(&decl_wrapper);
+
+        match id_map
+            .raw_entry_mut()
+            .from_hash(decl_hash, |x| x.eq(&decl_wrapper, type_engine))
+        {
+            RawEntryMut::Occupied(o) => o.get().clone(),
+            RawEntryMut::Vacant(v) => {
+                let decl_id = DeclId::new(self.slab.insert(decl_wrapper.clone()));
+                v.insert_with_hasher(
+                    decl_hash,
+                    decl_wrapper,
+                    decl_id.clone(),
+                    make_hasher(&hash_builder, type_engine),
+                );
+                decl_id
+            }
+        }
     }
 
     pub fn get_function<'a, T>(

@@ -138,13 +138,12 @@ impl ty::TyDeclaration {
                     attributes,
                     type_ascription,
                     is_configurable,
-                    span,
+                    span: span.clone(),
                 };
-                let decl_ref = decl_engine.insert(decl);
                 let typed_const_decl = ty::TyDeclaration::ConstantDeclaration {
-                    name: decl_ref.name,
-                    decl_id: decl_ref.id,
-                    decl_span: decl_ref.decl_span,
+                    name: name.clone(),
+                    decl_id: decl_engine.insert(type_engine, decl),
+                    decl_span: span,
                 };
                 check!(
                     ctx.namespace.insert_symbol(name, typed_const_decl.clone()),
@@ -163,12 +162,11 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let call_path = enum_decl.call_path.clone();
-                let decl_ref = decl_engine.insert(enum_decl);
                 let decl = ty::TyDeclaration::EnumDeclaration {
-                    name: decl_ref.name,
-                    decl_id: decl_ref.id,
+                    name: call_path.suffix.clone(),
+                    decl_id: decl_engine.insert(type_engine, enum_decl),
                     type_subst_list: todo!(),
-                    decl_span: decl_ref.decl_span,
+                    decl_span: enum_decl.span(),
                 };
                 check!(
                     ctx.namespace.insert_symbol(call_path.suffix, decl.clone()),
@@ -188,12 +186,11 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let name = fn_decl.name.clone();
-                let decl_ref = decl_engine.insert(fn_decl);
                 let decl = ty::TyDeclaration::FunctionDeclaration {
-                    name: decl_ref.name,
-                    decl_id: decl_ref.id,
+                    name: name.clone(),
+                    decl_id: decl_engine.insert(type_engine, fn_decl),
                     type_subst_list: todo!(),
-                    decl_span: decl_ref.decl_span,
+                    decl_span: fn_decl.span(),
                 };
                 ctx.namespace.insert_symbol(name, decl.clone());
                 decl
@@ -230,15 +227,12 @@ impl ty::TyDeclaration {
                             }
                         });
                 }
-
-                let decl_ref = decl_engine.insert(trait_decl.clone());
                 let decl = ty::TyDeclaration::TraitDeclaration {
-                    name: decl_ref.name,
-                    decl_id: decl_ref.id,
+                    name: trait_decl.name.clone(),
+                    decl_id: decl_engine.insert(type_engine, trait_decl.clone()),
                     type_subst_list: todo!(),
-                    decl_span: decl_ref.decl_span,
+                    decl_span: trait_decl.span.clone(),
                 };
-
                 check!(
                     ctx.namespace.insert_symbol(name, decl.clone()),
                     return err(warnings, errors),
@@ -269,13 +263,11 @@ impl ty::TyDeclaration {
                     warnings,
                     errors
                 );
-                let decl_ref = decl_engine.insert(impl_trait);
-
                 ty::TyDeclaration::ImplTrait {
-                    name: decl_ref.name,
-                    decl_id: decl_ref.id,
+                    name: impl_trait.trait_name.suffix.clone(),
+                    decl_id: decl_engine.insert(type_engine, impl_trait),
                     type_subst_list: todo!(),
-                    decl_span: decl_ref.decl_span,
+                    decl_span: impl_trait.span.clone(),
                 }
             }
             parsed::Declaration::ImplSelf(impl_self) => {
@@ -300,30 +292,27 @@ impl ty::TyDeclaration {
                     warnings,
                     errors
                 );
-                let decl_ref = decl_engine.insert(impl_trait);
-
                 ty::TyDeclaration::ImplTrait {
-                    name: decl_ref.name,
-                    decl_id: decl_ref.id,
+                    name: impl_trait.trait_name.suffix.clone(),
+                    decl_id: decl_engine.insert(type_engine, impl_trait),
                     type_subst_list: todo!(),
-                    decl_span: decl_ref.decl_span,
+                    decl_span: impl_trait.span.clone(),
                 }
             }
             parsed::Declaration::StructDeclaration(decl) => {
                 let span = decl.span.clone();
-                let decl = check!(
+                let struct_decl = check!(
                     ty::TyStructDeclaration::type_check(ctx.by_ref(), decl),
                     return ok(ty::TyDeclaration::ErrorRecovery(span), warnings, errors),
                     warnings,
                     errors
                 );
-                let call_path = decl.call_path.clone();
-                let decl_ref = decl_engine.insert(decl);
+                let call_path = struct_decl.call_path.clone();
                 let decl = ty::TyDeclaration::StructDeclaration {
-                    name: decl_ref.name,
-                    decl_id: decl_ref.id,
+                    name: struct_decl.call_path.suffix.clone(),
+                    decl_id: decl_engine.insert(type_engine, struct_decl),
                     type_subst_list: todo!(),
-                    decl_span: decl_ref.decl_span,
+                    decl_span: struct_decl.span(),
                 };
                 // insert the struct decl into namespace
                 check!(
@@ -343,11 +332,10 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let name = abi_decl.name.clone();
-                let decl_ref = decl_engine.insert(abi_decl);
                 let decl = ty::TyDeclaration::AbiDeclaration {
-                    name: decl_ref.name,
-                    decl_id: decl_ref.id,
-                    decl_span: decl_ref.decl_span,
+                    name: name.clone(),
+                    decl_span: abi_decl.span(),
+                    decl_id: decl_engine.insert(type_engine, abi_decl),
                 };
                 check!(
                     ctx.namespace.insert_symbol(name, decl.clone()),
@@ -402,7 +390,12 @@ impl ty::TyDeclaration {
                     });
                 }
                 let decl = ty::TyStorageDeclaration::new(fields_buf, span, attributes);
-                let decl_ref = decl_engine.insert(decl);
+                let decl_ref = DeclRef {
+                    name: todo!(),
+                    id: decl_engine.insert(type_engine, decl),
+                    subst_list: todo!(),
+                    decl_span: todo!(),
+                };
                 // insert the storage declaration into the symbols
                 // if there already was one, return an error that duplicate storage
 

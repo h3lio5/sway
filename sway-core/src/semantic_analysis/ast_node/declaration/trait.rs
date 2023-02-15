@@ -67,8 +67,8 @@ impl ty::TyTraitDeclaration {
         );
 
         // type check the interface surface
-        let mut new_interface_surface = vec![];
-        let mut dummy_interface_surface = vec![];
+        let mut new_interface_surface: Vec<DeclRef> = vec![];
+        let mut dummy_interface_surface: Vec<DeclRef> = vec![];
         for method in interface_surface.into_iter() {
             let method = check!(
                 ty::TyTraitFn::type_check(ctx.by_ref(), method),
@@ -76,9 +76,19 @@ impl ty::TyTraitDeclaration {
                 warnings,
                 errors
             );
-            let decl_ref = decl_engine.insert(method.clone());
-            dummy_interface_surface.push(decl_engine.insert(method.to_dummy_func(Mode::NonAbi)));
-            new_interface_surface.push(decl_ref);
+            let decl_id = decl_engine.insert(type_engine, method.clone());
+            dummy_interface_surface.push(DeclRef {
+                name: todo!(),
+                id: decl_engine.insert(type_engine, method.to_dummy_func(Mode::NonAbi)),
+                subst_list: todo!(),
+                decl_span: todo!(),
+            });
+            new_interface_surface.push(DeclRef {
+                name: todo!(),
+                id: decl_id,
+                subst_list: todo!(),
+                decl_span: todo!(),
+            });
         }
 
         // insert placeholder functions representing the interface surface
@@ -103,7 +113,7 @@ impl ty::TyTraitDeclaration {
         );
 
         // type check the methods
-        let mut new_methods = vec![];
+        let mut new_methods: Vec<DeclRef> = vec![];
         for method in methods.into_iter() {
             let method = check!(
                 ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true, false),
@@ -111,7 +121,12 @@ impl ty::TyTraitDeclaration {
                 warnings,
                 errors
             );
-            new_methods.push(decl_engine.insert(method));
+            new_methods.push(DeclRef {
+                name: todo!(),
+                id: decl_engine.insert(type_engine, method),
+                subst_list: todo!(),
+                decl_span: todo!(),
+            });
         }
 
         let typed_trait_decl = ty::TyTraitDeclaration {
@@ -183,6 +198,7 @@ impl ty::TyTraitDeclaration {
             ..
         } = self;
 
+        let type_engine = ctx.type_engine;
         let decl_engine = ctx.decl_engine;
         let engines = ctx.engines();
 
@@ -219,7 +235,15 @@ impl ty::TyTraitDeclaration {
                 errors
             );
             method.subst(&type_mapping, engines);
-            impld_method_refs.insert(method.name.clone(), decl_engine.insert(method));
+            impld_method_refs.insert(
+                method.name.clone(),
+                DeclRef {
+                    name: todo!(),
+                    id: decl_engine.insert(type_engine, method),
+                    subst_list: todo!(),
+                    decl_span: todo!(),
+                },
+            );
         }
 
         ok(
@@ -243,6 +267,7 @@ impl ty::TyTraitDeclaration {
         let mut warnings = vec![];
         let mut errors = vec![];
 
+        let type_engine = ctx.type_engine;
         let decl_engine = ctx.decl_engine;
         let engines = ctx.engines();
 
@@ -253,7 +278,7 @@ impl ty::TyTraitDeclaration {
             ..
         } = self;
 
-        let mut all_methods = vec![];
+        let mut all_method_refs: Vec<DeclRef> = vec![];
 
         // Retrieve the trait methods for this trait. Transform them into the
         // correct typing for this impl block by using the type parameters from
@@ -278,7 +303,14 @@ impl ty::TyTraitDeclaration {
             todo!();
             // method.replace_self_type(engines, type_id);
             method.subst(&type_mapping, engines);
-            all_methods.push(ctx.decl_engine.insert(method.to_dummy_func(Mode::NonAbi)));
+            all_method_refs.push(DeclRef {
+                name: todo!(),
+                id: ctx
+                    .decl_engine
+                    .insert(type_engine, method.to_dummy_func(Mode::NonAbi)),
+                subst_list: todo!(),
+                decl_span: todo!(),
+            });
         }
         for decl_ref in methods.iter() {
             let mut method = check!(
@@ -290,7 +322,12 @@ impl ty::TyTraitDeclaration {
             todo!();
             // method.replace_self_type(engines, type_id);
             method.subst(&type_mapping, engines);
-            all_methods.push(ctx.decl_engine.insert(method));
+            all_method_refs.push(DeclRef {
+                name: todo!(),
+                id: ctx.decl_engine.insert(type_engine, method),
+                subst_list: todo!(),
+                decl_span: todo!(),
+            });
         }
 
         // Insert the methods of the trait into the namespace.
@@ -301,7 +338,7 @@ impl ty::TyTraitDeclaration {
             trait_name.clone(),
             type_arguments.to_vec(),
             type_id,
-            &all_methods,
+            &all_method_refs,
             &trait_name.span(),
             false,
             engines,

@@ -47,10 +47,16 @@ impl DeclRef {
         type_mapping: &TypeSubstMap,
         engines: Engines<'_>,
     ) -> DeclRef {
+        let type_engine = engines.te();
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
         decl.subst(type_mapping, engines);
-        decl_engine.insert_wrapper(self.name.clone(), decl, self.decl_span.clone())
+        DeclRef {
+            name: todo!(),
+            id: decl_engine.insert_wrapper(type_engine, decl, self.decl_span.clone()),
+            subst_list: todo!(),
+            decl_span: todo!(),
+        }
     }
 }
 

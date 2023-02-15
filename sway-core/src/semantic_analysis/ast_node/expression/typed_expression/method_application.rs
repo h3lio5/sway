@@ -530,7 +530,12 @@ pub(crate) fn resolve_method_name(
         errors
     );
 
-    let decl_ref = ctx.decl_engine.insert(func_decl);
+    let decl_ref = DeclRef {
+        name: todo!(),
+        id: ctx.decl_engine.insert(type_engine, func_decl),
+        subst_list: todo!(),
+        decl_span: todo!(),
+    };
 
     ok(decl_ref, warnings, errors)
 }

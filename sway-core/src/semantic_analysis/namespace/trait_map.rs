@@ -578,11 +578,16 @@ impl TraitMap {
                             // decl.replace_self_type(engines, new_self_type);
                             (
                                 name,
-                                decl_engine.insert_wrapper(
-                                    decl_ref.name.clone(),
-                                    decl,
-                                    decl_ref.span(),
-                                ),
+                                DeclRef {
+                                    name: todo!(),
+                                    id: decl_engine.insert_wrapper(
+                                        type_engine,
+                                        decl,
+                                        decl_ref.span(),
+                                    ),
+                                    subst_list: todo!(),
+                                    decl_span: todo!(),
+                                },
                             )
                         })
                         .collect();

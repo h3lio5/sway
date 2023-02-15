@@ -562,7 +562,12 @@ impl ty::TyImplTrait {
 
         let methods_ids = methods
             .iter()
-            .map(|d| decl_engine.insert(d.clone()))
+            .map(|d| DeclRef {
+                name: todo!(),
+                id: decl_engine.insert(type_engine, d.clone()),
+                subst_list: todo!(),
+                decl_span: todo!(),
+            })
             .collect::<Vec<_>>();
 
         let impl_trait = ty::TyImplTrait {
@@ -596,6 +601,7 @@ fn type_check_trait_implementation(
     let mut errors = vec![];
     let mut warnings = vec![];
 
+    let type_engine = ctx.type_engine;
     let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
     let self_type = ctx.self_type();
@@ -689,7 +695,12 @@ fn type_check_trait_implementation(
             errors
         );
         let name = impl_method.name.clone();
-        let decl_ref = decl_engine.insert(impl_method);
+        let decl_ref = DeclRef {
+            name: todo!(),
+            id: decl_engine.insert(type_engine, impl_method),
+            subst_list: todo!(),
+            decl_span: todo!(),
+        };
 
         // Remove this method from the checklist.
         method_checklist.remove(&name);

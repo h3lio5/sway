@@ -18,6 +18,7 @@ pub(crate) use self::{
 
 use crate::{
     asm_lang::{virtual_ops::VirtualOp, virtual_register::VirtualRegister},
+    decl_engine::*,
     error::*,
     language::{
         parsed::*,
@@ -1327,7 +1328,7 @@ impl ty::TyExpression {
         });
 
         // Retrieve the interface surface for this abi.
-        let mut abi_methods = vec![];
+        let mut abi_methods: Vec<DeclRef> = vec![];
         for decl_ref in interface_surface.into_iter() {
             let method = check!(
                 CompileResult::from(decl_engine.get_trait_fn(&decl_ref, &name.span())),
@@ -1335,7 +1336,12 @@ impl ty::TyExpression {
                 warnings,
                 errors
             );
-            abi_methods.push(decl_engine.insert(method.to_dummy_func(Mode::ImplAbiFn)));
+            abi_methods.push(DeclRef {
+                name: todo!(),
+                id: decl_engine.insert(type_engine, method.to_dummy_func(Mode::ImplAbiFn)),
+                subst_list: todo!(),
+                decl_span: todo!(),
+            });
         }
 
         // Retrieve the methods for this abi.

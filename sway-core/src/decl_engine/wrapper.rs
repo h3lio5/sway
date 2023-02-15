@@ -1,4 +1,7 @@
-use std::fmt;
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
 
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
@@ -131,6 +134,60 @@ impl From<ty::TyEnumDeclaration> for (Ident, DeclWrapper, Span) {
             DeclWrapper::Enum(value),
             span,
         )
+    }
+}
+
+impl EqWithEngines for DeclWrapper {}
+impl PartialEqWithEngines for DeclWrapper {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+        match (self, other) {
+            (DeclWrapper::Function(l), DeclWrapper::Function(r)) => l.eq(r, type_engine),
+            (DeclWrapper::Trait(l), DeclWrapper::Trait(r)) => l.eq(r, type_engine),
+            (DeclWrapper::TraitFn(l), DeclWrapper::TraitFn(r)) => l.eq(r, type_engine),
+            (DeclWrapper::ImplTrait(l), DeclWrapper::ImplTrait(r)) => l.eq(r, type_engine),
+            (DeclWrapper::Struct(l), DeclWrapper::Struct(r)) => l.eq(r, type_engine),
+            (DeclWrapper::Storage(l), DeclWrapper::Storage(r)) => l.eq(r, type_engine),
+            (DeclWrapper::Abi(l), DeclWrapper::Abi(r)) => l.eq(r, type_engine),
+            (DeclWrapper::Constant(l), DeclWrapper::Constant(r)) => l.eq(r, type_engine),
+            (DeclWrapper::Enum(l), DeclWrapper::Enum(r)) => l.eq(r, type_engine),
+            (l, r) => std::mem::discriminant(l) == std::mem::discriminant(r),
+        }
+    }
+}
+
+impl HashWithEngines for DeclWrapper {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        std::mem::discriminant(self).hash(state);
+        match self {
+            DeclWrapper::Unknown => {}
+            DeclWrapper::Function(decl) => {
+                decl.hash(state, type_engine);
+            }
+            DeclWrapper::Trait(decl) => {
+                decl.hash(state, type_engine);
+            }
+            DeclWrapper::TraitFn(decl) => {
+                decl.hash(state, type_engine);
+            }
+            DeclWrapper::ImplTrait(decl) => {
+                decl.hash(state, type_engine);
+            }
+            DeclWrapper::Struct(decl) => {
+                decl.hash(state, type_engine);
+            }
+            DeclWrapper::Storage(decl) => {
+                decl.hash(state, type_engine);
+            }
+            DeclWrapper::Abi(decl) => {
+                decl.hash(state, type_engine);
+            }
+            DeclWrapper::Constant(decl) => {
+                decl.hash(state, type_engine);
+            }
+            DeclWrapper::Enum(decl) => {
+                decl.hash(state, type_engine);
+            }
+        }
     }
 }
 

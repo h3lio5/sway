@@ -2,6 +2,7 @@ use sway_error::error::CompileError;
 use sway_types::Spanned;
 
 use crate::{
+    decl_engine::DeclRef,
     error::*,
     language::{parsed::*, ty},
     semantic_analysis::{Mode, TypeCheckContext},
@@ -15,6 +16,8 @@ impl ty::TyAbiDeclaration {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        let type_engine = ctx.type_engine;
 
         let AbiDeclaration {
             name,
@@ -50,7 +53,12 @@ impl ty::TyAbiDeclaration {
                     })
                 }
             }
-            new_interface_surface.push(ctx.decl_engine.insert(method));
+            new_interface_surface.push(DeclRef::new(
+                method.name.clone(),
+                *ctx.decl_engine.insert(type_engine, method),
+                todo!(),
+                method.name.span(),
+            ));
         }
 
         // Type check the methods.
@@ -70,7 +78,12 @@ impl ty::TyAbiDeclaration {
                     })
                 }
             }
-            new_methods.push(ctx.decl_engine.insert(method));
+            new_methods.push(DeclRef::new(
+                method.name.clone(),
+                *ctx.decl_engine.insert(type_engine, method),
+                todo!(),
+                method.name.span(),
+            ));
         }
 
         let abi_decl = ty::TyAbiDeclaration {

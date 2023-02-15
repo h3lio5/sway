@@ -1,7 +1,6 @@
 use sway_types::{Span, Spanned};
 
 use crate::{
-    decl_engine::*,
     engine_threading::*,
     error::*,
     language::{ty, CallPath},
@@ -277,9 +276,7 @@ impl TypeBinding<CallPath> {
                 }
 
                 // insert the new copy into the declaration engine
-                let DeclRef {
-                    id: new_decl_id, ..
-                } = ctx.decl_engine.insert(new_copy);
+                let new_decl_id = ctx.decl_engine.insert(type_engine, new_copy);
 
                 ty::TyDeclaration::FunctionDeclaration {
                     name,
@@ -322,9 +319,7 @@ impl TypeBinding<CallPath> {
                 );
 
                 // insert the new copy into the declaration engine
-                let DeclRef {
-                    id: new_decl_id, ..
-                } = ctx.decl_engine.insert(new_copy);
+                let new_decl_id = ctx.decl_engine.insert(type_engine, new_copy);
 
                 ty::TyDeclaration::EnumDeclaration {
                     name,
@@ -367,9 +362,7 @@ impl TypeBinding<CallPath> {
                 );
 
                 // insert the new copy into the declaration engine
-                let DeclRef {
-                    id: new_decl_id, ..
-                } = ctx.decl_engine.insert(new_copy);
+                let new_decl_id = ctx.decl_engine.insert(type_engine, new_copy);
 
                 ty::TyDeclaration::StructDeclaration {
                     name,
