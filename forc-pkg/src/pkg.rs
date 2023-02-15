@@ -2319,7 +2319,8 @@ fn apply_patch(
     dep_source: &Source,
     member_manifests: &MemberManifestFiles,
 ) -> Result<Source> {
-    match dep_source_patch(manifest, dep_name, dep_source) {
+    let manifest = PackageManifestFile::with_workspace_patches(manifest);
+    match dep_source_patch(&manifest, dep_name, dep_source) {
         Some(patch) => dep_to_source(manifest.dir(), patch, member_manifests),
         None => Ok(dep_source.clone()),
     }
