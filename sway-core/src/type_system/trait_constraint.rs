@@ -1,4 +1,7 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    cmp::Ordering,
+    hash::{Hash, Hasher},
+};
 
 use sway_error::error::CompileError;
 use sway_types::{Span, Spanned};
@@ -24,11 +27,26 @@ impl HashWithEngines for TraitConstraint {
         self.type_arguments.hash(state, type_engine);
     }
 }
+
 impl EqWithEngines for TraitConstraint {}
 impl PartialEqWithEngines for TraitConstraint {
     fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.trait_name == other.trait_name
             && self.type_arguments.eq(&other.type_arguments, type_engine)
+    }
+}
+
+impl OrdWithEngines for TraitConstraint {
+    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
+        let TraitConstraint {
+            trait_name: ltn,
+            type_arguments: lta,
+        } = self;
+        let TraitConstraint {
+            trait_name: rtn,
+            type_arguments: rta,
+        } = other;
+        ltn.cmp(rtn).then_with(|| lta.cmp(rta, type_engine))
     }
 }
 

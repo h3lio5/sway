@@ -1,4 +1,7 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    cmp::Ordering,
+    collections::{BTreeMap, BTreeSet},
+};
 
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
@@ -16,10 +19,10 @@ impl PartialEqWithEngines for TraitSuffix {
     }
 }
 impl OrdWithEngines for TraitSuffix {
-    fn cmp(&self, rhs: &Self, type_engine: &TypeEngine) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> std::cmp::Ordering {
         self.name
-            .cmp(&rhs.name)
-            .then_with(|| self.args.cmp(&rhs.args, type_engine))
+            .cmp(&other.name)
+            .then_with(|| self.args.cmp(&other.args, type_engine))
     }
 }
 
@@ -31,11 +34,11 @@ impl<T: PartialEqWithEngines> PartialEqWithEngines for CallPath<T> {
     }
 }
 impl<T: OrdWithEngines> OrdWithEngines for CallPath<T> {
-    fn cmp(&self, rhs: &Self, type_engine: &TypeEngine) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
         self.prefixes
-            .cmp(&rhs.prefixes)
-            .then_with(|| self.suffix.cmp(&rhs.suffix, type_engine))
-            .then_with(|| self.is_absolute.cmp(&rhs.is_absolute))
+            .cmp(&other.prefixes)
+            .then_with(|| self.suffix.cmp(&other.suffix, type_engine))
+            .then_with(|| self.is_absolute.cmp(&other.is_absolute))
     }
 }
 
@@ -48,10 +51,10 @@ struct TraitKey {
 }
 
 impl OrdWithEngines for TraitKey {
-    fn cmp(&self, rhs: &Self, type_engine: &TypeEngine) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> std::cmp::Ordering {
         self.name
-            .cmp(&rhs.name, type_engine)
-            .then_with(|| self.type_id.cmp(&rhs.type_id))
+            .cmp(&other.name, type_engine)
+            .then_with(|| self.type_id.cmp(&other.type_id))
     }
 }
 
