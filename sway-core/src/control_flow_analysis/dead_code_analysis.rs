@@ -816,7 +816,6 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             // it in the namespace. if not then we need to check to see if the namespace contains
             // the decl id parents (the original generic non monomorphized decl id).
             let mut exists = false;
-            let parents: Vec<DeclId> = todo!();
             // let parents = decl_engine.find_all_parents(function_decl_ref);
             // for parent in parents.iter() {
             //     if let Ok(parent) = decl_engine.get_function(parent, &expression_span) {

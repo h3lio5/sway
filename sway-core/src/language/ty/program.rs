@@ -92,7 +92,7 @@ impl TyProgram {
                     declarations.push(TyDeclaration::FunctionDeclaration {
                         name: name.clone(),
                         decl_id: *decl_id,
-                        type_subst_list: todo!(),
+                        type_subst_list: type_subst_list.clone(),
                         decl_span: decl_span.clone(),
                     });
                 }

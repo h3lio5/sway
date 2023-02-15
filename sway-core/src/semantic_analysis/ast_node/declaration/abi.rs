@@ -6,7 +6,7 @@ use crate::{
     error::*,
     language::{parsed::*, ty},
     semantic_analysis::{Mode, TypeCheckContext},
-    CompileResult,
+    CompileResult, TypeSubstList,
 };
 
 impl ty::TyAbiDeclaration {
@@ -64,9 +64,12 @@ impl ty::TyAbiDeclaration {
         // Type check the methods.
         let mut new_methods = vec![];
         for method in methods.into_iter() {
-            let method = check!(
+            let (method, method_subst_list) = check!(
                 ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true, false),
-                ty::TyFunctionDeclaration::error(method.clone()),
+                (
+                    ty::TyFunctionDeclaration::error(method.clone()),
+                    TypeSubstList::new()
+                ),
                 warnings,
                 errors
             );
@@ -78,11 +81,12 @@ impl ty::TyAbiDeclaration {
                     })
                 }
             }
+            let method_span = method.name.span();
             new_methods.push(DeclRef::new(
                 method.name.clone(),
                 *ctx.decl_engine.insert(type_engine, method),
-                todo!(),
-                method.name.span(),
+                method_subst_list,
+                method_span,
             ));
         }
 

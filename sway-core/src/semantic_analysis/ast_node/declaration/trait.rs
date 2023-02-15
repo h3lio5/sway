@@ -48,7 +48,7 @@ impl ty::TyTraitDeclaration {
 
         // Type check the type parameters. This will also insert them into the
         // current namespace.
-        let new_type_parameters = check!(
+        let (new_type_parameters, _) = check!(
             TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters, true),
             return err(warnings, errors),
             warnings,
@@ -113,9 +113,12 @@ impl ty::TyTraitDeclaration {
         // type check the methods
         let mut new_methods: Vec<DeclRef> = vec![];
         for method in methods.into_iter() {
-            let method = check!(
+            let (method, method_subst_list) = check!(
                 ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true, false),
-                ty::TyFunctionDeclaration::error(method),
+                (
+                    ty::TyFunctionDeclaration::error(method),
+                    TypeSubstList::new()
+                ),
                 warnings,
                 errors
             );

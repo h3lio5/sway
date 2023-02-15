@@ -179,7 +179,7 @@ impl ty::TyDeclaration {
             parsed::Declaration::FunctionDeclaration(fn_decl) => {
                 let span = fn_decl.span.clone();
                 let mut ctx = ctx.with_type_annotation(type_engine.insert(TypeInfo::Unknown));
-                let fn_decl = check!(
+                let (fn_decl, fn_subst_list) = check!(
                     ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl, false, false),
                     return ok(ty::TyDeclaration::ErrorRecovery(span), warnings, errors),
                     warnings,
@@ -188,9 +188,9 @@ impl ty::TyDeclaration {
                 let name = fn_decl.name.clone();
                 let decl = ty::TyDeclaration::FunctionDeclaration {
                     name: name.clone(),
-                    decl_id: decl_engine.insert(type_engine, fn_decl),
-                    type_subst_list: todo!(),
                     decl_span: fn_decl.span(),
+                    decl_id: decl_engine.insert(type_engine, fn_decl),
+                    type_subst_list: Template::new(fn_subst_list),
                 };
                 ctx.namespace.insert_symbol(name, decl.clone());
                 decl

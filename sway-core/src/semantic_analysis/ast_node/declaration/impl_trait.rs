@@ -40,7 +40,7 @@ impl ty::TyImplTrait {
 
         // Type check the type parameters. This will also insert them into the
         // current namespace.
-        let new_impl_type_parameters = check!(
+        let (new_impl_type_parameters, _) = check!(
             TypeParameter::type_check_type_params(ctx.by_ref(), impl_type_parameters, true),
             return err(warnings, errors),
             warnings,
@@ -466,7 +466,7 @@ impl ty::TyImplTrait {
 
         // Type check the type parameters. This will also insert them into the
         // current namespace.
-        let new_impl_type_parameters = check!(
+        let (new_impl_type_parameters, _) = check!(
             TypeParameter::type_check_type_params(ctx.by_ref(), impl_type_parameters, true),
             return err(warnings, errors),
             warnings,
@@ -518,12 +518,13 @@ impl ty::TyImplTrait {
         // type check the methods inside of the impl block
         let mut methods = vec![];
         for fn_decl in functions.into_iter() {
-            methods.push(check!(
+            let (method, method_subst_list) = check!(
                 ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl, true, true),
                 continue,
                 warnings,
                 errors
-            ));
+            );
+            methods.push(method);
         }
         if !errors.is_empty() {
             return err(warnings, errors);
@@ -741,7 +742,7 @@ fn type_check_impl_method(
     };
 
     // type check the function declaration
-    let mut impl_method = check!(
+    let (mut impl_method, impl_method_subst_list) = check!(
         ty::TyFunctionDeclaration::type_check(ctx.by_ref(), impl_method.clone(), true, false),
         return err(warnings, errors),
         warnings,

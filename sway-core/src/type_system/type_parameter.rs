@@ -121,11 +121,16 @@ impl TypeParameter {
         mut ctx: TypeCheckContext,
         type_params: Vec<TypeParameter>,
         disallow_trait_constraints: bool,
-    ) -> CompileResult<Vec<TypeParameter>> {
+    ) -> CompileResult<(Vec<TypeParameter>, TypeSubstList)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
         let mut new_type_params: Vec<TypeParameter> = vec![];
+        let mut subst_list = ctx
+            .namespace
+            .get_type_subst_stack()
+            .pop()
+            .unwrap_or_default();
 
         for type_param in type_params.into_iter() {
             if disallow_trait_constraints && !type_param.trait_constraints.is_empty() {
@@ -143,7 +148,7 @@ impl TypeParameter {
         }
 
         if errors.is_empty() {
-            ok(new_type_params, warnings, errors)
+            ok((new_type_params, subst_list), warnings, errors)
         } else {
             err(warnings, errors)
         }
