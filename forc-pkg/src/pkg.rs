@@ -52,6 +52,8 @@ use url::Url;
 
 type GraphIx = u32;
 type Node = Pinned;
+
+///  An edge of the dependency graph.
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Edge {
     /// The name of the dependency as declared under `[dependencies]` or `[contract-dependencies]`.
@@ -60,6 +62,7 @@ pub struct Edge {
     pub kind: DepKind,
 }
 
+/// Possible dependency kinds available in the dependency graph.
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub enum DepKind {
     /// The dependency is a library and declared under `[dependencies]`.
@@ -76,9 +79,14 @@ impl fmt::Display for DepKind {
         }
     }
 }
+
+/// Dependency graph holding pinned packages and the dependency relations between them.
 pub type Graph = petgraph::stable_graph::StableGraph<Node, Edge, Directed, GraphIx>;
+/// Edge index for the `Graph`.
 pub type EdgeIx = petgraph::graph::EdgeIndex<GraphIx>;
+/// Node index for the `Graph`.
 pub type NodeIx = petgraph::graph::NodeIndex<GraphIx>;
+/// A mapping between pinned package ids to its corresponding manifest file.
 pub type ManifestMap = HashMap<PinnedId, PackageManifestFile>;
 
 /// A unique ID for a pinned package.
@@ -144,6 +152,7 @@ pub struct PkgTestEntry {
 /// This is a map from each member package name to its associated built package.
 pub type BuiltWorkspace = HashMap<String, BuiltPackage>;
 
+/// The result of successfully compiling a package or a workspace.
 #[derive(Debug)]
 pub enum Built {
     Package(Box<BuiltPackage>),
@@ -316,6 +325,7 @@ pub struct PkgOpts {
     pub output_directory: Option<String>,
 }
 
+/// The set of options to control the level of logging.
 #[derive(Default, Clone)]
 pub struct PrintOpts {
     /// Print the generated Sway AST (Abstract Syntax Tree).
@@ -335,6 +345,7 @@ pub struct PrintOpts {
     pub ir: bool,
 }
 
+/// The set of options to control minification of certain human readable outputs.
 #[derive(Default, Clone)]
 pub struct MinifyOpts {
     /// By default the JSON for ABIs is formatted for human readability. By using this option JSON
@@ -397,7 +408,7 @@ impl Default for MemberFilter {
 }
 
 impl MemberFilter {
-    /// Returns a new `BuildFilter` that only builds scripts.
+    /// Returns a new `MmeberFilter` that only builds scripts.
     pub fn only_scripts() -> Self {
         Self {
             build_contracts: false,
@@ -407,7 +418,7 @@ impl MemberFilter {
         }
     }
 
-    /// Returns a new `BuildFilter` that only builds contracts.
+    /// Returns a new `MemberFilter` that only builds contracts.
     pub fn only_contracts() -> Self {
         Self {
             build_contracts: true,
@@ -417,7 +428,7 @@ impl MemberFilter {
         }
     }
 
-    /// Filter given target of output nodes according to the this `BuildFilter`.
+    /// Filter given target of output nodes according to the this `MemberFilter`.
     pub fn filter_outputs(
         &self,
         build_plan: &BuildPlan,
@@ -606,6 +617,7 @@ impl Built {
         }
     }
 }
+
 const DEFAULT_REMOTE_NAME: &str = "origin";
 
 /// Error returned upon failed parsing of `SourcePinned::from_str`.
@@ -904,6 +916,10 @@ fn validate_pkg_version(pkg_manifest: &PackageManifestFile) -> Result<()> {
     Ok(())
 }
 
+/// Produce an iterator yielding all workspace member nodes in order of compilation.
+///
+/// In the case that this `BuildPlan` was constructed for a single package,
+/// only that package's node will be yielded.
 fn member_nodes(g: &Graph) -> impl Iterator<Item = NodeIx> + '_ {
     g.node_indices()
         .filter(|&n| g[n].source == SourcePinned::Member)
@@ -1000,6 +1016,7 @@ fn validate_dep(
 
     Ok(dep_manifest)
 }
+
 /// Part of dependency validation, any checks related to the depenency's manifest content.
 fn validate_dep_manifest(
     dep: &Pinned,
@@ -1136,6 +1153,7 @@ fn remove_deps(
     }
 }
 
+/// Check if given node has a parent in the given graph.
 fn has_parent(graph: &Graph, node: NodeIx) -> bool {
     graph
         .edges_directed(node, Direction::Incoming)
@@ -1390,6 +1408,7 @@ impl FromStr for SourcePinned {
     }
 }
 
+/// Check if given git commit hash is valid.
 fn validate_git_commit_hash(commit_hash: &str) -> Result<()> {
     const LEN: usize = 40;
     if commit_hash.len() != LEN {
@@ -1749,6 +1768,7 @@ fn git_repo_dir_name(name: &str, repo: &Url) -> String {
     format!("{name}-{repo_url_hash:x}")
 }
 
+/// The hash of the given url.
 fn hash_url(url: &Url) -> u64 {
     let mut hasher = hash_map::DefaultHasher::new();
     url.hash(&mut hasher);
@@ -2722,6 +2742,8 @@ impl PkgEntryKind {
 }
 
 impl PkgTestEntry {
+    /// Construct a `PkgTestEntry` by looking the entry point's function declaration from
+    /// declaration engine.
     fn from_decl(decl_ref: DeclRef, decl_engine: &DeclEngine) -> Result<Self> {
         let span = decl_ref.span();
         let test_function_decl = decl_engine.get_function(&decl_ref, &span)?;
