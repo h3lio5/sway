@@ -33,6 +33,18 @@ pub(crate) struct HoverDocumentation<'a> {
     documentation: &'a str,
 }
 
+pub(crate) struct RequestParams<'a> {
+    uri: &'a Url,
+    line: i32,
+    char: i32,
+}
+
+/// Contains data required to evaluate a rename request.
+pub(crate) struct Rename<'a> {
+    req: &'a RequestParams<'a>,
+    nem_name: &'a str,
+}
+
 async fn init_and_open(service: &mut LspService<Backend>, entry_point: PathBuf) -> Url {
     let _ = lsp::initialize_request(service).await;
     lsp::initialized_notification(service).await;
@@ -1356,6 +1368,7 @@ async fn hover_docs_for_enums() {
     hover.documentation = " Docs for variants";
     let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
 }
+
 #[tokio::test]
 async fn hover_docs_with_code_examples() {
     let (mut service, _) = LspService::new(Backend::new);
@@ -1369,6 +1382,29 @@ async fn hover_docs_with_code_examples() {
         };
     let mut i = 0..;
     let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
+}
+
+#[tokio::test]
+async fn rename() {
+    let (mut service, _) = LspService::new(Backend::new);
+    let uri = init_and_open(
+        &mut service,
+        test_fixtures_dir().join("renaming/src/main.sw"),
+    )
+    .await;
+
+    let req = RequestParams {
+        uri: &uri,
+        line: 19,
+        char: 13,
+    };
+    let rename = Rename {
+        req: &req,
+        nem_name: "pnt",
+    };
+
+    let mut i = 0..;
+    let _ = lsp::prepare_rename_request(&mut service, &req, &mut i).await;
 }
 
 #[tokio::test]

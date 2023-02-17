@@ -1,6 +1,9 @@
-use crate::core::{
-    session::Session,
-    token::{get_range_from_span, AstToken},
+use crate::{
+    core::{
+        session::Session,
+        token::{get_range_from_span, AstToken, SymbolKind},
+    },
+    error::LanguageServerError,
 };
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -36,13 +39,52 @@ pub fn prepare_rename(
     session: Arc<Session>,
     url: Url,
     position: Position,
-) -> Option<PrepareRenameResponse> {
-    let (ident, token) = session.token_map().token_at_position(&url, position)?;
-    match token.parsed {
-        AstToken::Reassignment(_) => None,
-        _ => Some(PrepareRenameResponse::RangeWithPlaceholder {
-            range: get_range_from_span(&ident.span()),
-            placeholder: ident.as_str().to_string(),
-        }),
+) -> Result<PrepareRenameResponse, LanguageServerError> {
+    let temp_path = &session.sync.temp_dir()?;
+    let (ident, token) = session
+        .token_map()
+        .token_at_position(&url, position)
+        .ok_or_else(|| LanguageServerError::TokenNotFound)?;
+
+    for item in session.token_map().iter() {
+        let ((.., span), t) = item.pair();
+        // only let through tokens that are in the users workspace.
+
+        // This isn't entirely correct, we should be checking the definition of the token
+        // and then using the definitions span to check if it is in the users workspace.
+        if let Some(path) = span.path() {
+            if !path.starts_with(temp_path) {
+                return Err(LanguageServerError::TokenNotPartOfWorkspace);
+            }
+        }
     }
+    // Make sure we don't allow renaming of tokens that
+    // are keywords, intrinsics, or tokens that are external
+    // to the users workspace.
+    session
+        .token_map()
+        .iter()
+        .filter(|item| {
+            let t = item.value();
+            let res = match t.parsed {
+                AstToken::Intrinsic(_) => true,
+                _ => false,
+            };
+            t.kind == SymbolKind::Keyword || res
+        })
+        .for_each(|item| {
+            let (.., span) = item.key();
+            if ident.as_str().contains(span.as_str()) {
+                println!(
+                    "WE GOT PROBELMS {} contains {}",
+                    ident.as_str(),
+                    span.as_str()
+                );
+                //TODO return an error here.
+            }
+        });
+    Ok(PrepareRenameResponse::RangeWithPlaceholder {
+        range: get_range_from_span(&ident.span()),
+        placeholder: ident.as_str().to_string(),
+    })
 }

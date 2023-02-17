@@ -20,6 +20,10 @@ pub enum LanguageServerError {
     FailedToParse { diagnostics: Diagnostics },
     #[error("Error formatting document: {0}")]
     FormatError(FormatterError),
+    #[error("No token was found in the token map at that position")]
+    TokenNotFound,
+    #[error("Token is not part of the users workspace")]
+    TokenNotPartOfWorkspace,
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]

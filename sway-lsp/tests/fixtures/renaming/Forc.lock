@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-A0E6B5462B93F88B'
+
+[[package]]
+name = 'renaming'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-A0E6B5462B93F88B'
+dependencies = ['core']
