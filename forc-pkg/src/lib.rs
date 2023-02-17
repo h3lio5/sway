@@ -7,7 +7,8 @@
 pub mod cmd;
 pub mod lock;
 pub mod manifest;
-pub(crate) mod pkg;
+mod pkg;
+mod utils; 
 
 pub use lock::Lock;
 pub use manifest::{
