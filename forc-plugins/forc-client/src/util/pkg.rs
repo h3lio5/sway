@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use anyhow::Result;
-use forc_pkg::{self as pkg, manifest::ManifestFile, BuildOpts, BuildPlan};
+use forc_pkg::{self as pkg, cmd::BuildOpts, manifest::ManifestFile, BuildPlan};
 use pkg::{build_with_options, BuiltPackage, PackageManifestFile};
 
 pub(crate) fn built_pkgs_with_manifest(

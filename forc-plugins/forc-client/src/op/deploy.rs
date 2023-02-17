@@ -118,17 +118,17 @@ pub async fn deploy_pkg(
     Ok(DeployedContract { id: contract_id })
 }
 
-fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
+fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::cmd::BuildOpts {
     let const_inject_map = std::collections::HashMap::new();
-    pkg::BuildOpts {
-        pkg: pkg::PkgOpts {
+    pkg::cmd::BuildOpts {
+        pkg: pkg::cmd::PkgOpts {
             path: cmd.pkg.path.clone(),
             offline: cmd.pkg.offline,
             terse: cmd.pkg.terse,
             locked: cmd.pkg.locked,
             output_directory: cmd.pkg.output_directory.clone(),
         },
-        print: pkg::PrintOpts {
+        print: pkg::cmd::PrintOpts {
             ast: cmd.print.ast,
             dca_graph: cmd.print.dca_graph,
             finalized_asm: cmd.print.finalized_asm,
@@ -136,7 +136,7 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
             ir: cmd.print.ir,
         },
         time_phases: cmd.print.time_phases,
-        minify: pkg::MinifyOpts {
+        minify: pkg::cmd::MinifyOpts {
             json_abi: cmd.minify.json_abi,
             json_storage_slots: cmd.minify.json_storage_slots,
         },

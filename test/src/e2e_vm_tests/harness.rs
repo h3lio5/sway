@@ -197,9 +197,9 @@ pub(crate) fn runs_in_vm(
 pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) -> Result<Built> {
     println!("Compiling {} ...", file_name.bold());
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let build_opts = forc_pkg::BuildOpts {
+    let build_opts = forc_pkg::cmd::BuildOpts {
         build_target: run_config.build_target,
-        pkg: forc_pkg::PkgOpts {
+        pkg: forc_pkg::cmd::PkgOpts {
             path: Some(format!(
                 "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}"
             )),
@@ -239,7 +239,7 @@ pub(crate) async fn compile_and_run_unit_tests(
         .iter()
         .collect();
         let built_tests = forc_test::build(forc_test::Opts {
-            pkg: forc_pkg::PkgOpts {
+            pkg: forc_pkg::cmd::PkgOpts {
                 path: Some(path.to_string_lossy().into_owned()),
                 locked: run_config.locked,
                 terse: !(capture_output || run_config.verbose),

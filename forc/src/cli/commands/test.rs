@@ -153,14 +153,14 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> Res
 
 fn opts_from_cmd(cmd: Command) -> forc_test::Opts {
     forc_test::Opts {
-        pkg: pkg::PkgOpts {
+        pkg: pkg::cmd::PkgOpts {
             path: cmd.build.pkg.path,
             offline: cmd.build.pkg.offline,
             terse: cmd.build.pkg.terse,
             locked: cmd.build.pkg.locked,
             output_directory: cmd.build.pkg.output_directory,
         },
-        print: pkg::PrintOpts {
+        print: pkg::cmd::PrintOpts {
             ast: cmd.build.print.ast,
             dca_graph: cmd.build.print.dca_graph,
             finalized_asm: cmd.build.print.finalized_asm,
@@ -168,7 +168,7 @@ fn opts_from_cmd(cmd: Command) -> forc_test::Opts {
             ir: cmd.build.print.ir,
         },
         time_phases: cmd.build.print.time_phases,
-        minify: pkg::MinifyOpts {
+        minify: pkg::cmd::MinifyOpts {
             json_abi: cmd.build.minify.json_abi,
             json_storage_slots: cmd.build.minify.json_storage_slots,
         },

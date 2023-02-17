@@ -4,9 +4,10 @@
 //! The project should consist of one or more Sway modules under a `src` directory. It may also
 //! declare a set of forc package dependencies within its manifest.
 
+pub mod cmd;
 pub mod lock;
 pub mod manifest;
-mod pkg;
+pub(crate) mod pkg;
 
 pub use lock::Lock;
 pub use manifest::{

@@ -88,9 +88,9 @@ pub struct ContractToTest {
 /// The set of options provided to the `test` function.
 #[derive(Default, Clone)]
 pub struct Opts {
-    pub pkg: pkg::PkgOpts,
-    pub print: pkg::PrintOpts,
-    pub minify: pkg::MinifyOpts,
+    pub pkg: pkg::cmd::PkgOpts,
+    pub print: pkg::cmd::PrintOpts,
+    pub minify: pkg::cmd::MinifyOpts,
     /// If set, outputs a binary file representing the script bytes.
     pub binary_outfile: Option<String>,
     /// If set, outputs source file mapping in JSON format
@@ -251,9 +251,9 @@ impl<'a> PackageTests {
 
 impl Opts {
     /// Convert this set of test options into a set of build options.
-    pub fn into_build_opts(self) -> pkg::BuildOpts {
+    pub fn into_build_opts(self) -> pkg::cmd::BuildOpts {
         let const_inject_map = std::collections::HashMap::new();
-        pkg::BuildOpts {
+        pkg::cmd::BuildOpts {
             pkg: self.pkg,
             print: self.print,
             minify: self.minify,

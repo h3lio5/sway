@@ -8,17 +8,17 @@ pub fn build(cmd: BuildCommand) -> Result<pkg::Built> {
     Ok(built)
 }
 
-fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
+fn opts_from_cmd(cmd: BuildCommand) -> pkg::cmd::BuildOpts {
     let const_inject_map = std::collections::HashMap::new();
-    pkg::BuildOpts {
-        pkg: pkg::PkgOpts {
+    pkg::cmd::BuildOpts {
+        pkg: pkg::cmd::PkgOpts {
             path: cmd.build.pkg.path,
             offline: cmd.build.pkg.offline,
             terse: cmd.build.pkg.terse,
             locked: cmd.build.pkg.locked,
             output_directory: cmd.build.pkg.output_directory,
         },
-        print: pkg::PrintOpts {
+        print: pkg::cmd::PrintOpts {
             ast: cmd.build.print.ast,
             dca_graph: cmd.build.print.dca_graph,
             finalized_asm: cmd.build.print.finalized_asm,
@@ -26,7 +26,7 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
             ir: cmd.build.print.ir,
         },
         time_phases: cmd.build.print.time_phases,
-        minify: pkg::MinifyOpts {
+        minify: pkg::cmd::MinifyOpts {
             json_abi: cmd.build.minify.json_abi,
             json_storage_slots: cmd.build.minify.json_storage_slots,
         },
