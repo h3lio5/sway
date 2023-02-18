@@ -24,6 +24,7 @@ use std::{
     fmt,
     fs::{self, File},
     hash::{Hash, Hasher},
+    ops::{Index, IndexMut},
     path::{Path, PathBuf},
     str::FromStr,
 };
@@ -81,8 +82,45 @@ impl fmt::Display for DepKind {
     }
 }
 
-/// Dependency graph holding pinned packages and the dependency relations between them.
 pub type Graph = petgraph::stable_graph::StableGraph<Node, Edge, Directed, GraphIx>;
+
+/// Compilation graph holding pinned packages and the dependency relations between them.
+#[derive(Debug, Clone, Default)]
+pub struct DependencyGraph {
+    graph: Graph,
+}
+
+impl Index<NodeIx> for DependencyGraph {
+    type Output = Node;
+
+    fn index(&self, index: NodeIx) -> &Self::Output {
+        &self.graph[index]
+    }
+}
+
+impl IndexMut<NodeIx> for DependencyGraph {
+    fn index_mut(&mut self, index: NodeIx) -> &mut Self::Output {
+        &mut self.graph[index]
+    }
+}
+
+impl AsRef<Graph> for DependencyGraph {
+    fn as_ref(&self) -> &Graph {
+        &self.graph
+    }
+}
+
+impl DependencyGraph {
+    fn new(graph: Graph) -> Self {
+        Self { graph }
+    }
+
+    /// Mutably borrow the inner `Graph` of this `DependencyGraph`.
+    fn graph_mut(&mut self) -> &mut Graph {
+        &mut self.graph
+    }
+}
+
 /// Edge index for the `Graph`.
 pub type EdgeIx = petgraph::graph::EdgeIndex<GraphIx>;
 /// Node index for the `Graph`.
@@ -272,7 +310,7 @@ pub enum SourcePinned {
 /// Represents the full build plan for a project.
 #[derive(Clone, Debug)]
 pub struct BuildPlan {
-    graph: Graph,
+    compilation_graph: DependencyGraph,
     manifest_map: ManifestMap,
     compilation_order: Vec<NodeIx>,
 }
@@ -602,15 +640,16 @@ impl BuildPlan {
     pub fn from_manifests(manifests: &MemberManifestFiles, offline: bool) -> Result<Self> {
         // Check toolchain version
         validate_version(manifests)?;
-        let mut graph = Graph::default();
+        let mut compilation_graph = DependencyGraph::default();
+        let graph = compilation_graph.graph_mut();
         let mut manifest_map = ManifestMap::default();
-        fetch_graph(manifests, offline, &mut graph, &mut manifest_map)?;
+        fetch_graph(manifests, offline, graph, &mut manifest_map)?;
         // Validate the graph, since we constructed the graph from scratch the paths will not be a
         // problem but the version check is still needed
-        validate_graph(&graph, manifests)?;
-        let compilation_order = compilation_order(&graph)?;
+        validate_graph(graph, manifests)?;
+        let compilation_order = compilation_order(graph)?;
         Ok(Self {
-            graph,
+            compilation_graph,
             manifest_map,
             compilation_order,
         })
@@ -681,14 +720,16 @@ impl BuildPlan {
         // Determine the compilation order.
         let compilation_order = compilation_order(&graph)?;
 
+        let compilation_graph = DependencyGraph::new(graph);
+
         let plan = Self {
-            graph,
+            compilation_graph,
             manifest_map,
             compilation_order,
         };
 
         // Construct the new lock and check the diff.
-        let new_lock = Lock::from_graph(plan.graph());
+        let new_lock = Lock::from_graph(plan.compilation_graph.as_ref());
         let lock_diff = new_lock.diff(&lock);
         if !lock_diff.removed.is_empty() || !lock_diff.added.is_empty() {
             new_lock_cause.get_or_insert(anyhow!("lock file did not match manifest"));
@@ -728,7 +769,7 @@ impl BuildPlan {
         self.compilation_order()
             .iter()
             .cloned()
-            .filter(|&n| self.graph[n].source == SourcePinned::Member)
+            .filter(|&n| self.graph()[n].source == SourcePinned::Member)
     }
 
     /// Produce an iterator yielding all workspace member pinned pkgs in order of compilation.
@@ -741,8 +782,8 @@ impl BuildPlan {
     }
 
     /// View the build plan's compilation graph.
-    pub fn graph(&self) -> &Graph {
-        &self.graph
+    pub fn graph(&self) -> &DependencyGraph {
+        &self.compilation_graph
     }
 
     /// View the build plan's map of pinned package IDs to their associated manifest.
@@ -758,20 +799,20 @@ impl BuildPlan {
     /// Produce the node index of the member with the given name.
     pub fn find_member_index(&self, member_name: &str) -> Option<NodeIx> {
         self.member_nodes()
-            .find(|node_ix| self.graph[*node_ix].name == member_name)
+            .find(|node_ix| self.graph()[*node_ix].name == member_name)
     }
 
     /// Produce an iterator yielding indices for the given node and its dependencies in BFS order.
     pub fn node_deps(&self, n: NodeIx) -> impl '_ + Iterator<Item = NodeIx> {
-        let bfs = Bfs::new(&self.graph, n);
+        let bfs = Bfs::new(self.compilation_graph.as_ref(), n);
         // Return an iterator yielding visitable nodes from the given node.
-        bfs.iter(&self.graph)
+        bfs.iter(self.compilation_graph.as_ref())
     }
 
     /// Produce an iterator yielding build profiles from the member nodes of this BuildPlan.
     pub fn build_profiles(&self) -> impl '_ + Iterator<Item = (String, BuildProfile)> {
         let manifest_map = &self.manifest_map;
-        let graph = &self.graph;
+        let graph = &self.compilation_graph;
         self.member_nodes().flat_map(|member_node| {
             manifest_map[&graph[member_node].id()]
                 .build_profiles()
@@ -2930,7 +2971,7 @@ pub fn build(
         let dep_namespace = match dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
-            &plan.graph,
+            plan.compilation_graph.as_ref(),
             node,
             constants,
             engines,
@@ -2954,6 +2995,7 @@ pub fn build(
         // If the current node is a contract dependency, collect the contract_id
         if plan
             .graph()
+            .as_ref()
             .edges_directed(node, Direction::Incoming)
             .any(|e| matches!(e.weight().kind, DepKind::Contract { .. }))
         {
@@ -3144,13 +3186,13 @@ pub fn check(
 
     let mut results = vec![];
     for &node in plan.compilation_order.iter() {
-        let pkg = &plan.graph[node];
+        let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
         let constants = manifest.config_time_constants();
         let dep_namespace = dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
-            &plan.graph,
+            plan.compilation_graph.as_ref(),
             node,
             constants,
             engines,
