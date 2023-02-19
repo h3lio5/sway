@@ -1,9 +1,9 @@
 use crate::{
     core::{
         session::Session,
-        token::{get_range_from_span, AstToken, SymbolKind},
+        token::{get_range_from_span, SymbolKind},
     },
-    error::LanguageServerError,
+    error::{LanguageServerError, RenameError},
 };
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -44,45 +44,31 @@ pub fn prepare_rename(
     let (ident, token) = session
         .token_map()
         .token_at_position(&url, position)
-        .ok_or_else(|| LanguageServerError::TokenNotFound)?;
+        .ok_or_else(|| RenameError::TokenNotFound)?;
 
-    for item in session.token_map().iter() {
-        let ((.., span), t) = item.pair();
-        // only let through tokens that are in the users workspace.
+    // Only let through tokens that are in the users workspace.
+    // tokens that are external to the users workspace cannot be renamed.
+    let decl_ident = token
+        .declared_token_ident(&session.type_engine.read())
+        .ok_or_else(|| RenameError::TokenNotFound)?;
 
-        // This isn't entirely correct, we should be checking the definition of the token
-        // and then using the definitions span to check if it is in the users workspace.
-        if let Some(path) = span.path() {
-            if !path.starts_with(temp_path) {
-                return Err(LanguageServerError::TokenNotPartOfWorkspace);
-            }
+    // Check the span of the tokens defintions to determine if it's in the users workspace.
+    if let Some(path) = decl_ident.span().path() {
+        if !path.starts_with(temp_path) {
+            return Err(LanguageServerError::RenameError(
+                RenameError::TokenNotPartOfWorkspace,
+            ));
         }
     }
+
     // Make sure we don't allow renaming of tokens that
-    // are keywords, intrinsics, or tokens that are external
-    // to the users workspace.
-    session
-        .token_map()
-        .iter()
-        .filter(|item| {
-            let t = item.value();
-            let res = match t.parsed {
-                AstToken::Intrinsic(_) => true,
-                _ => false,
-            };
-            t.kind == SymbolKind::Keyword || res
-        })
-        .for_each(|item| {
-            let (.., span) = item.key();
-            if ident.as_str().contains(span.as_str()) {
-                println!(
-                    "WE GOT PROBELMS {} contains {}",
-                    ident.as_str(),
-                    span.as_str()
-                );
-                //TODO return an error here.
-            }
-        });
+    // are keywords or intrinsics.
+    if matches!(token.kind, SymbolKind::Keyword | SymbolKind::Intrinsic) {
+        return Err(LanguageServerError::RenameError(
+            RenameError::UnableToRenameKeyword,
+        ));
+    }
+
     Ok(PrepareRenameResponse::RangeWithPlaceholder {
         range: get_range_from_span(&ident.span()),
         placeholder: ident.as_str().to_string(),

@@ -84,6 +84,7 @@ pub enum SymbolKind {
     Module,
     TypeParameter,
     Keyword,
+    Intrinsic,
     Unknown,
 }
 

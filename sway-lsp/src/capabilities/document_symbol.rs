@@ -23,7 +23,7 @@ pub(crate) fn symbol_kind(symbol_kind: &SymbolKind) -> lsp_types::SymbolKind {
         SymbolKind::BuiltinType => lsp_types::SymbolKind::TYPE_PARAMETER,
         SymbolKind::Function | SymbolKind::DeriveHelper => lsp_types::SymbolKind::FUNCTION,
         SymbolKind::Const => lsp_types::SymbolKind::CONSTANT,
-        SymbolKind::Struct => lsp_types::SymbolKind::STRUCT,
+        SymbolKind::Struct | SymbolKind::Intrinsic => lsp_types::SymbolKind::STRUCT,
         SymbolKind::Trait => lsp_types::SymbolKind::INTERFACE,
         SymbolKind::Module => lsp_types::SymbolKind::MODULE,
         SymbolKind::Enum => lsp_types::SymbolKind::ENUM,
