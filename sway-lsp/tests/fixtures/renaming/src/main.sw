@@ -20,6 +20,9 @@ fn main() {
     let point = Point { x: 10, y: 20 };
     let n = add(point.x, point.y);
     let f = (c, point, n);
+    // raw identifier syntax 
+    let r#struct = ();
+    let d = r#struct;
 }
 
 
