@@ -393,6 +393,11 @@ impl PackageManifestFile {
             Ok(self.dir().to_path_buf().join(constants::LOCK_FILE_NAME))
         }
     }
+
+    /// Returns the `PackageManifest` of this `PackageManifestFile`.
+    pub fn manifest(&self) -> &PackageManifest {
+        &self.manifest
+    }
 }
 
 impl PackageManifest {
@@ -432,11 +437,32 @@ impl PackageManifest {
     ///
     /// This checks the project and organization names against a set of reserved/restricted
     /// keywords and patterns.
+    ///
+    /// This also checks minimum forc version given in the package manifest file.
+    /// If required minimum forc version is higher than current forc version return an error with
+    /// upgrade instructions
     pub fn validate(&self) -> Result<()> {
         validate_name(&self.project.name, "package name")?;
         if let Some(ref org) = self.project.organization {
             validate_name(org, "organization name")?;
         }
+        match &self.project.forc_version {
+            Some(min_forc_version) => {
+                // Get the current version of the toolchain
+                let crate_version = env!("CARGO_PKG_VERSION");
+                let toolchain_version = semver::Version::parse(crate_version)?;
+                if toolchain_version < *min_forc_version {
+                    bail!(
+                    "{:?} requires forc version {} but current forc version is {}\nUpdate the toolchain by following: https://fuellabs.github.io/sway/v{}/introduction/installation.html",
+                    self.project.name,
+                    min_forc_version,
+                    crate_version,
+                    crate_version
+                );
+                }
+            }
+            None => {}
+        };
         Ok(())
     }
 

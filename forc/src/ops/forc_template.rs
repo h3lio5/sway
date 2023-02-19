@@ -1,7 +1,9 @@
 use crate::cli::TemplateCommand;
 use anyhow::{anyhow, Context, Result};
 use forc_pkg::{
-    fetch_git, fetch_id, find_dir_within, git_commit_path, pin_git, PackageManifest, SourceGit,
+    fetch_git, find_dir_within, pin_git,
+    utils::{fetch_id, git_commit_path},
+    PackageManifest, SourceGit,
 };
 use forc_util::validate_name;
 use fs_extra::dir::{copy, CopyOptions};
