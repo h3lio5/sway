@@ -411,9 +411,5 @@ pub(crate) async fn prepare_rename_request<'a>(
         .unwrap();
     let value = response.result().unwrap().clone();
     let prepare_rename_res: Option<PrepareRenameResponse> = serde_json::from_value(value).unwrap();
-    assert!(
-        prepare_rename_res.is_some(),
-        "Expected prepareRename to return a Some type"
-    );
     prepare_rename_res.unwrap()
 }

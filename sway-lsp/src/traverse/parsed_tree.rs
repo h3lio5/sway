@@ -771,7 +771,7 @@ impl<'a> ParsedTree<'a> {
                     to_ident_key(name),
                     Token::from_parsed(
                         AstToken::Intrinsic(kind_binding.inner.clone()),
-                        SymbolKind::Function,
+                        SymbolKind::Intrinsic,
                     ),
                 );
 

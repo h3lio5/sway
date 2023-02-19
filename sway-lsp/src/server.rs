@@ -491,8 +491,7 @@ impl LanguageServer for Backend {
     ) -> jsonrpc::Result<Option<PrepareRenameResponse>> {
         match self.get_uri_and_session(&params.text_document.uri) {
             Ok((uri, session)) => {
-                let position = params.position;
-                match capabilities::rename::prepare_rename(session, uri, position) {
+                match capabilities::rename::prepare_rename(session, uri, params.position) {
                     Ok(res) => Ok(Some(res)),
                     Err(err) => {
                         tracing::error!("{}", err.to_string());
