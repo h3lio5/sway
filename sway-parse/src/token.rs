@@ -125,7 +125,7 @@ pub fn lex_commented(
 
     let mut parent_token_trees = Vec::new();
     let mut token_trees = Vec::new();
-    while let Some((mut index, mut character)) = l.stream.next() {
+    while let Some((index, mut character)) = l.stream.next() {
         if character.is_whitespace() {
             // if the beginning of a file starts with whitespace
             // we must keep track to ensure that the module level docs
@@ -163,9 +163,11 @@ pub fn lex_commented(
         }
 
         if character.is_xid_start() || character == '_' {
-            // Raw identifier, e.g., `r#foo`? Then mark as such.
+            // Raw identifier, e.g., `r#foo`?
             let is_raw_ident = character == 'r' && matches!(l.stream.peek(), Some((_, '#')));
             if is_raw_ident {
+                // Move the character over `r#` keeping the starting index so we can collect
+                // the raw identifier with the token.
                 l.stream.next();
                 if let Some((.., next_character)) = l.stream.next() {
                     character = next_character;
@@ -180,7 +182,7 @@ pub fn lex_commented(
             if not_is_single_underscore {
                 // Consume until we hit other than `XID_CONTINUE`.
                 while l.stream.next_if(|(_, c)| c.is_xid_continue()).is_some() {}
-                let ident = Ident::new_with_raw(span_until(&mut l, index), is_raw_ident);
+                let ident = Ident::new(span_until(&mut l, index));
                 token_trees.push(CommentedTokenTree::Tree(ident.into()));
                 continue;
             }

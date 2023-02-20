@@ -61,6 +61,3 @@ pub(crate) const HARD_TAB: char = '\t';
 /// Default max number of newlines allowed in between statements before collapsing them to
 /// threshold
 pub const DEFAULT_NEWLINE_THRESHOLD: usize = 1;
-
-//IDENT
-pub(crate) const RAW_MODIFIER: &str = "r#";

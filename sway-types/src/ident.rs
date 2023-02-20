@@ -10,16 +10,11 @@ use std::{
 pub struct BaseIdent {
     name_override_opt: Option<&'static str>,
     span: Span,
-    is_raw_ident: bool,
 }
 
 impl BaseIdent {
     pub fn as_str(&self) -> &str {
         self.name_override_opt.unwrap_or_else(|| self.span.as_str())
-    }
-
-    pub fn is_raw_ident(&self) -> bool {
-        self.is_raw_ident
     }
 
     pub fn name_override_opt(&self) -> Option<&'static str> {
@@ -31,7 +26,6 @@ impl BaseIdent {
         Ident {
             name_override_opt: None,
             span,
-            is_raw_ident: false,
         }
     }
 
@@ -39,16 +33,6 @@ impl BaseIdent {
         Ident {
             name_override_opt: None,
             span,
-            is_raw_ident: false,
-        }
-    }
-
-    pub fn new_with_raw(span: Span, is_raw_ident: bool) -> Ident {
-        let span = span.trim();
-        Ident {
-            name_override_opt: None,
-            span,
-            is_raw_ident,
         }
     }
 
@@ -56,7 +40,6 @@ impl BaseIdent {
         Ident {
             name_override_opt: Some(name_override),
             span,
-            is_raw_ident: false,
         }
     }
 
@@ -64,7 +47,6 @@ impl BaseIdent {
         Ident {
             name_override_opt: Some(name),
             span: Span::dummy(),
-            is_raw_ident: false,
         }
     }
 }
@@ -136,7 +118,6 @@ impl From<&IdentUnique> for Ident {
         Ident {
             name_override_opt: item.0.name_override_opt(),
             span: item.0.span(),
-            is_raw_ident: item.0.is_raw_ident(),
         }
     }
 }
