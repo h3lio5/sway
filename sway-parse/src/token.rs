@@ -163,13 +163,12 @@ pub fn lex_commented(
         }
 
         if character.is_xid_start() || character == '_' {
-            // Raw identifier, e.g., `r#foo`? Then mark as such, stripping the prefix `r#`.
+            // Raw identifier, e.g., `r#foo`? Then mark as such.
             let is_raw_ident = character == 'r' && matches!(l.stream.peek(), Some((_, '#')));
             if is_raw_ident {
                 l.stream.next();
-                if let Some((next_index, next_character)) = l.stream.next() {
+                if let Some((.., next_character)) = l.stream.next() {
                     character = next_character;
-                    index = next_index;
                 }
             }
 
