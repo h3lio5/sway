@@ -1,4 +1,4 @@
-contract;
+script;
 
 enum Color {
     Red: (),
@@ -24,5 +24,4 @@ fn main() {
     let r#struct = ();
     let d = r#struct;
 }
-
 

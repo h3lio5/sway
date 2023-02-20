@@ -229,8 +229,13 @@ impl Session {
     ) -> Option<GotoDefinitionResponse> {
         self.token_map
             .token_at_position(&uri, position)
-            .and_then(|(_, token)| token.declared_token_ident(&self.type_engine.read()))
+            .and_then(|(ident, token)| {
+                eprintln!("ident at pos = {:#?}", ident);
+                eprintln!("token at pos = {:#?}", token);
+                token.declared_token_ident(&self.type_engine.read())
+            })
             .and_then(|decl_ident| {
+                eprintln!("decl_ident = {:#?}", decl_ident);
                 let range = get_range_from_span(&decl_ident.span());
                 decl_ident.span().path().and_then(|path| {
                     // We use ok() here because we don't care about propagating the error from from_file_path

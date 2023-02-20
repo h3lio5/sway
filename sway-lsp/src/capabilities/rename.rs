@@ -55,12 +55,12 @@ pub fn prepare_rename(
 
     // Only let through tokens that are in the users workspace.
     // tokens that are external to the users workspace cannot be renamed.
-    let decl_ident = token
-        .declared_token_ident(&session.type_engine.read())
+    let decl_span = token
+        .declared_token_span(&session.type_engine.read())
         .ok_or_else(|| RenameError::TokenNotFound)?;
 
     // Check the span of the tokens defintions to determine if it's in the users workspace.
-    if let Some(path) = decl_ident.span().path() {
+    if let Some(path) = decl_span.path() {
         if !path.starts_with(temp_path) {
             return Err(LanguageServerError::RenameError(
                 RenameError::TokenNotPartOfWorkspace,
