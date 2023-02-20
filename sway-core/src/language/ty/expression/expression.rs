@@ -43,9 +43,9 @@ impl HashWithEngines for TyExpression {
 }
 
 impl SubstTypes for TyExpression {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.return_type.subst(type_mapping, engines);
-        self.expression.subst(type_mapping, engines);
+    fn subst_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
+        self.return_type.subst(engines, subst_list);
+        self.expression.subst(engines, subst_list);
     }
 }
 

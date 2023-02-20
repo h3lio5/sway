@@ -11,15 +11,21 @@ use crate::{engine_threading::*, language::ty, type_system::*};
 /// Helper struct to aid in type unification.
 pub(super) struct Unifier<'a> {
     engines: Engines<'a>,
+    subst_stack: &'a mut Vec<TypeSubstList>,
     arguments_are_flipped: bool,
     help_text: String,
 }
 
 impl<'a> Unifier<'a> {
     /// Creates a new [Unifier].
-    pub(super) fn new(engines: Engines<'a>, help_text: &str) -> Unifier<'a> {
+    pub(super) fn new(
+        engines: Engines<'a>,
+        subst_stack: &'a mut Vec<TypeSubstList>,
+        help_text: &str,
+    ) -> Unifier<'a> {
         Unifier {
             engines,
+            subst_stack,
             arguments_are_flipped: false,
             help_text: help_text.to_string(),
         }
@@ -36,7 +42,7 @@ impl<'a> Unifier<'a> {
 
     /// Helper method for replacing the values in the [TypeEngine].
     fn replace_received_with_expected(
-        &self,
+        &mut self,
         received: TypeId,
         expected: TypeId,
         received_type_info: &TypeInfo,
@@ -56,7 +62,7 @@ impl<'a> Unifier<'a> {
 
     /// Helper method for replacing the values in the [TypeEngine].
     fn replace_expected_with_received(
-        &self,
+        &mut self,
         received: TypeId,
         expected: TypeId,
         received_type_info: TypeInfo,
@@ -76,7 +82,7 @@ impl<'a> Unifier<'a> {
 
     /// Performs type unification with `received` and `expected`.
     pub(super) fn unify(
-        &self,
+        &mut self,
         received: TypeId,
         expected: TypeId,
         span: &Span,
@@ -204,6 +210,29 @@ impl<'a> Unifier<'a> {
                 (vec![], vec![])
             }
 
+            // When we see the [TypeParam][TypeInfo::TypeParam] variant,
+            // exchange it for the type at the location it is pointing to.
+            (TypeParam(n), _) => {
+                let elem_type_id = self
+                    .subst_stack
+                    .last_mut()
+                    .unwrap()
+                    .get_mut(n)
+                    .unwrap()
+                    .type_id;
+                self.unify(elem_type_id, expected, span)
+            }
+            (_, TypeParam(n)) => {
+                let elem_type_id = self
+                    .subst_stack
+                    .last_mut()
+                    .unwrap()
+                    .get_mut(n)
+                    .unwrap()
+                    .type_id;
+                self.unify(received, elem_type_id, span)
+            }
+
             // When we don't know anything about either term, assume that
             // they match and make the one we know nothing about reference the
             // one we may know something about.
@@ -291,7 +320,7 @@ impl<'a> Unifier<'a> {
     }
 
     fn unify_tuples(
-        &self,
+        &mut self,
         rfs: Vec<TypeArgument>,
         efs: Vec<TypeArgument>,
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
@@ -313,7 +342,7 @@ impl<'a> Unifier<'a> {
     }
 
     fn unify_unsigned_ints(
-        &self,
+        &mut self,
         span: &Span,
         r: IntegerBits,
         e: IntegerBits,
@@ -343,7 +372,7 @@ impl<'a> Unifier<'a> {
     }
 
     fn unify_structs(
-        &self,
+        &mut self,
         received: TypeId,
         expected: TypeId,
         span: &Span,
@@ -392,7 +421,7 @@ impl<'a> Unifier<'a> {
     }
 
     fn unify_enums(
-        &self,
+        &mut self,
         received: TypeId,
         expected: TypeId,
         span: &Span,
@@ -441,7 +470,7 @@ impl<'a> Unifier<'a> {
     }
 
     fn unify_arrays(
-        &self,
+        &mut self,
         received: TypeId,
         expected: TypeId,
         span: &Span,

@@ -74,15 +74,15 @@ impl HashWithEngines for TyFunctionDeclaration {
 }
 
 impl SubstTypes for TyFunctionDeclaration {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+            .for_each(|x| x.subst(engines, subst_list));
         self.parameters
             .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.return_type.subst(type_mapping, engines);
-        self.body.subst(type_mapping, engines);
+            .for_each(|x| x.subst(engines, subst_list));
+        self.return_type.subst(engines, subst_list);
+        self.body.subst(engines, subst_list);
     }
 }
 
@@ -351,8 +351,8 @@ impl HashWithEngines for TyFunctionParameter {
 }
 
 impl SubstTypes for TyFunctionParameter {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.type_argument.type_id.subst(type_mapping, engines);
+    fn subst_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
+        self.type_argument.type_id.subst(engines, subst_list);
     }
 }
 

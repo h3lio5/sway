@@ -32,9 +32,10 @@ fn preprocess_instructions(
     let mut decl_map: HashMap<DeclId, Vec<Instruction>> = HashMap::new();
     let mut other_instructions = vec![];
     for instruction in instructions.into_iter() {
+        println!("{:?}", instruction);
         match &instruction {
             Instruction::MonomorphizeDecl(decl_id, _) => {
-                let v = decl_map.entry(decl_id.clone()).or_default();
+                let v = decl_map.entry(*decl_id).or_default();
                 v.push(instruction);
             }
             _ => {

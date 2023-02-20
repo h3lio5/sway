@@ -7,15 +7,18 @@ use std::{
     vec::IntoIter,
 };
 
+use sway_error::error::CompileError;
+use sway_types::{Ident, Span, Spanned};
+
 use super::*;
-use crate::engine_threading::*;
+use crate::{decl_engine::Templated, engine_threading::*, namespace::Path, Namespace};
 
 pub(crate) trait SubstTypes {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>);
+    fn subst_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList);
 
-    fn subst(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        if !type_mapping.is_empty() {
-            self.subst_inner(type_mapping, engines);
+    fn subst(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
+        if !subst_list.is_empty() {
+            self.subst_inner(engines, subst_list);
         }
     }
 }
@@ -31,16 +34,29 @@ pub(crate) trait FinalizeTypes {
 }
 
 /// A list of types that serve as the list of type params for type substitution.
-/// Any types of the [TypeParam][TypeInfo::TypeParam] variant will point to an index in
-/// this list.
+/// Any types of the [TypeParam][TypeInfo::TypeParam] variant will point to an
+/// index in this list.
+///
+/// Reference: https://rustc-dev-guide.rust-lang.org/generics.html#unsubstituted-generics
 #[derive(Debug, Clone, Default)]
 pub struct TypeSubstList {
     list: Vec<TypeParameter>,
+    num_from_the_current_scope: usize,
 }
 
 impl TypeSubstList {
     pub(crate) fn new() -> TypeSubstList {
-        TypeSubstList { list: vec![] }
+        TypeSubstList {
+            list: vec![],
+            num_from_the_current_scope: 0,
+        }
+    }
+
+    pub(crate) fn set_num_from_the_current_scope(self, n: usize) -> TypeSubstList {
+        TypeSubstList {
+            num_from_the_current_scope: n,
+            list: self.list,
+        }
     }
 
     pub(crate) fn is_empty(&self) -> bool {
@@ -55,6 +71,14 @@ impl TypeSubstList {
         self.list.push(type_param);
     }
 
+    pub(crate) fn get(&self, n: usize) -> Option<&TypeParameter> {
+        self.list.get(n)
+    }
+
+    pub(crate) fn get_mut(&mut self, n: usize) -> Option<&mut TypeParameter> {
+        self.list.get_mut(n)
+    }
+
     pub(crate) fn iter(&self) -> Iter<'_, TypeParameter> {
         self.list.iter()
     }
@@ -67,115 +91,106 @@ impl TypeSubstList {
         self.list.iter_mut()
     }
 
-    // pub(crate) fn find_match(&self, engines: Engines<'_>, type_id: TypeId) -> Option<TypeId> {
-    //     let type_engine = engines.te();
-    //     match type_engine.get(type_id) {
-    //         TypeInfo::TypeParam(n) if n < self.list.len() => {
-    //             self.list.get(n).map(|type_param| type_param.type_id)
-    //         }
-    //         TypeInfo::TypeParam(_) => panic!("tried an out of bounds substitution"),
-    //         _ => None,
-    //     }
-    // }
-
-    // #[allow(clippy::too_many_arguments)]
-    // pub(crate) fn monomorphize(
-    //     &mut self,
-    //     engines: Engines<'_>,
-    //     type_arguments: &mut [TypeArgument],
-    //     enforce_type_arguments: EnforceTypeArguments,
-    //     obj_name: &Ident,
-    //     call_site_span: &Span,
-    //     namespace: &mut Namespace,
-    //     mod_path: &Path,
-    // ) -> CompileResult<()> {
-    //     let mut warnings = vec![];
-    //     let mut errors = vec![];
-
-    //     let type_engine = engines.te();
-    //     let decl_engine = engines.de();
-
-    //     match (self.is_empty(), type_arguments.is_empty()) {
-    //         (true, true) => ok((), warnings, errors),
-    //         (false, true) => {
-    //             if let EnforceTypeArguments::Yes = enforce_type_arguments {
-    //                 errors.push(CompileError::NeedsTypeArguments {
-    //                     name: obj_name.clone(),
-    //                     span: call_site_span.clone(),
-    //                 });
-    //                 return err(warnings, errors);
-    //             }
-    //             ok((), warnings, errors)
-    //         }
-    //         (true, false) => {
-    //             let type_arguments_span = type_arguments
-    //                 .iter()
-    //                 .map(|x| x.span.clone())
-    //                 .reduce(Span::join)
-    //                 .unwrap_or_else(|| obj_name.span());
-    //             errors.push(CompileError::DoesNotTakeTypeArguments {
-    //                 name: obj_name.clone(),
-    //                 span: type_arguments_span,
-    //             });
-    //             err(warnings, errors)
-    //         }
-    //         (false, false) => {
-    //             let type_arguments_span = type_arguments
-    //                 .iter()
-    //                 .map(|x| x.span.clone())
-    //                 .reduce(Span::join)
-    //                 .unwrap_or_else(|| obj_name.span());
-    //             if self.len() != type_arguments.len() {
-    //                 errors.push(CompileError::IncorrectNumberOfTypeArguments {
-    //                     given: type_arguments.len(),
-    //                     expected: self.len(),
-    //                     span: type_arguments_span,
-    //                 });
-    //                 return err(warnings, errors);
-    //             }
-    //             for type_argument in type_arguments.iter_mut() {
-    //                 type_argument.type_id = check!(
-    //                     type_engine.resolve(
-    //                         decl_engine,
-    //                         type_argument.type_id,
-    //                         &type_argument.span,
-    //                         enforce_type_arguments,
-    //                         None,
-    //                         namespace,
-    //                         mod_path
-    //                     ),
-    //                     type_engine.insert(TypeInfo::ErrorRecovery),
-    //                     warnings,
-    //                     errors
-    //                 );
-    //             }
-    //             self.subst2(type_arguments);
-    //             ok((), warnings, errors)
-    //         }
-    //     }
-    // }
-
-    // /// Substitutes the values in this [TypeSubstList] with the values in the
-    // /// given list of [TypeArgument]s.
-    // ///
-    // /// NOTE: This method assumes that the length of `self` and `type_arguments`
-    // /// is equal.
-    // fn subst2(&mut self, type_arguments: &[TypeArgument]) {
-    //     self.iter_mut()
-    //         .zip(type_arguments.iter())
-    //         .for_each(|(type_param, type_arg)| {
-    //             type_param.type_id = type_arg.type_id;
-    //         });
-    // }
-}
-
-impl FromIterator<TypeParameter> for TypeSubstList {
-    fn from_iter<T: IntoIterator<Item = TypeParameter>>(iter: T) -> Self {
-        TypeSubstList {
-            list: iter.into_iter().collect::<Vec<TypeParameter>>(),
+    pub(crate) fn find_match(&self, engines: Engines<'_>, type_id: TypeId) -> Option<TypeId> {
+        let type_engine = engines.te();
+        match type_engine.get(type_id) {
+            TypeInfo::TypeParam(n) if n < self.list.len() => {
+                self.list.get(n).map(|type_param| type_param.type_id)
+            }
+            TypeInfo::TypeParam(_) => panic!("tried an out of bounds substitution"),
+            _ => None,
         }
     }
+
+    pub(crate) fn monomorphize(
+        &mut self,
+        type_arguments: &mut [TypeArgument],
+        enforce_type_arguments: EnforceTypeArguments,
+        obj_name: &Ident,
+        call_site_span: &Span,
+    ) -> CompileResult<()> {
+        let warnings = vec![];
+        let mut errors = vec![];
+
+        // Check for the cases in which we can exit early.
+        match (self.num_from_the_current_scope, type_arguments.len()) {
+            (0, 0) => {
+                return ok((), warnings, errors);
+            }
+            (0, m) if m > 0 => {
+                let type_arguments_span = type_arguments
+                    .iter()
+                    .map(|x| x.span.clone())
+                    .reduce(Span::join)
+                    .unwrap_or_else(|| obj_name.span());
+                errors.push(CompileError::DoesNotTakeTypeArguments {
+                    name: obj_name.clone(),
+                    span: type_arguments_span,
+                });
+                return err(warnings, errors);
+            }
+            (_, 0) if matches!(enforce_type_arguments, EnforceTypeArguments::No) => {
+                return ok((), warnings, errors);
+            }
+            (_, 0) if matches!(enforce_type_arguments, EnforceTypeArguments::Yes) => {
+                errors.push(CompileError::NeedsTypeArguments {
+                    name: obj_name.clone(),
+                    span: call_site_span.clone(),
+                });
+                return err(warnings, errors);
+            }
+            (n, m) if n != m => {
+                let type_arguments_span = type_arguments
+                    .iter()
+                    .map(|x| x.span.clone())
+                    .reduce(Span::join)
+                    .unwrap_or_else(|| obj_name.span());
+                errors.push(CompileError::IncorrectNumberOfTypeArguments {
+                    given: type_arguments.len(),
+                    expected: self.len(),
+                    span: type_arguments_span,
+                });
+                return err(warnings, errors);
+            }
+            _ => {}
+        }
+
+        self.subst_from_back(type_arguments);
+        ok((), warnings, errors)
+    }
+
+    /// Substitutes the values in this [TypeSubstList] with the values in the
+    /// given list of [TypeArgument]s, starting from a calculated index.
+    fn subst_from_back(&mut self, type_arguments: &[TypeArgument]) {
+        // only start substitution at the index in the list for which these type
+        // arguments apply
+        let num_to_start_at = self.list.len() - self.num_from_the_current_scope;
+        self.iter_mut()
+            .skip(num_to_start_at)
+            .zip(type_arguments.iter())
+            .for_each(|(type_param, type_arg)| {
+                type_param.type_id = type_arg.type_id;
+            });
+    }
+
+    /// Substitutes the values in this [TypeSubstList] with another
+    /// [TypeSubstList], starting from 0.
+    pub(crate) fn subst_from_front(&mut self, other: &TypeSubstList) {
+        self.iter_mut()
+            .zip(other.list.iter())
+            .for_each(|(left, right)| {
+                left.type_id = right.type_id;
+            });
+    }
 }
+
+// impl FromIterator<TypeParameter> for TypeSubstList {
+//     fn from_iter<T: IntoIterator<Item = TypeParameter>>(iter: T) -> Self {
+//         TypeSubstList {
+//             list: iter.into_iter().collect::<Vec<TypeParameter>>(),
+//         }
+//     }
+// }
 
 impl EqWithEngines for TypeSubstList {}
 impl PartialEqWithEngines for TypeSubstList {
@@ -197,10 +212,31 @@ impl OrdWithEngines for TypeSubstList {
 }
 
 impl SubstTypes for TypeSubstList {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
         self.list
             .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+            .for_each(|x| x.subst(engines, subst_list));
+    }
+}
+
+impl Templated for TypeSubstList {
+    fn fresh_copy(&self, engines: Engines<'_>) -> Self {
+        let type_engine = engines.te();
+        let new_list = self
+            .list
+            .iter()
+            .map(|type_param| TypeParameter {
+                type_id: type_engine.insert(type_engine.get(type_param.type_id)),
+                initial_type_id: type_param.initial_type_id,
+                name_ident: type_param.name_ident.clone(),
+                trait_constraints: type_param.trait_constraints.clone(),
+                trait_constraints_span: type_param.trait_constraints_span.clone(),
+            })
+            .collect();
+        TypeSubstList {
+            list: new_list,
+            num_from_the_current_scope: self.num_from_the_current_scope,
+        }
     }
 }
 

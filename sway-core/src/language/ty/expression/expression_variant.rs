@@ -565,7 +565,7 @@ impl HashWithEngines for TyExpressionVariant {
 }
 
 impl SubstTypes for TyExpressionVariant {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
         use TyExpressionVariant::*;
         match self {
             Literal(..) => (),
@@ -576,44 +576,42 @@ impl SubstTypes for TyExpressionVariant {
             } => {
                 arguments
                     .iter_mut()
-                    .for_each(|(_ident, expr)| expr.subst(type_mapping, engines));
+                    .for_each(|(_ident, expr)| expr.subst(engines, subst_list));
                 let new_decl_ref = function_decl_ref
                     .clone()
-                    .subst_types_and_insert_new(type_mapping, engines);
+                    .subst_types_and_insert_new(engines, subst_list);
                 function_decl_ref.replace_id((&new_decl_ref).into());
             }
             LazyOperator { lhs, rhs, .. } => {
-                (*lhs).subst(type_mapping, engines);
-                (*rhs).subst(type_mapping, engines);
+                (*lhs).subst(engines, subst_list);
+                (*rhs).subst(engines, subst_list);
             }
             VariableExpression { .. } => (),
-            Tuple { fields } => fields
-                .iter_mut()
-                .for_each(|x| x.subst(type_mapping, engines)),
+            Tuple { fields } => fields.iter_mut().for_each(|x| x.subst(engines, subst_list)),
             Array { contents } => contents
                 .iter_mut()
-                .for_each(|x| x.subst(type_mapping, engines)),
+                .for_each(|x| x.subst(engines, subst_list)),
             ArrayIndex { prefix, index } => {
-                (*prefix).subst(type_mapping, engines);
-                (*index).subst(type_mapping, engines);
+                (*prefix).subst(engines, subst_list);
+                (*index).subst(engines, subst_list);
             }
-            StructExpression { fields, .. } => fields
-                .iter_mut()
-                .for_each(|x| x.subst(type_mapping, engines)),
+            StructExpression { fields, .. } => {
+                fields.iter_mut().for_each(|x| x.subst(engines, subst_list))
+            }
             CodeBlock(block) => {
-                block.subst(type_mapping, engines);
+                block.subst(engines, subst_list);
             }
             FunctionParameter => (),
-            MatchExp { desugared, .. } => desugared.subst(type_mapping, engines),
+            MatchExp { desugared, .. } => desugared.subst(engines, subst_list),
             IfExp {
                 condition,
                 then,
                 r#else,
             } => {
-                condition.subst(type_mapping, engines);
-                then.subst(type_mapping, engines);
+                condition.subst(engines, subst_list);
+                then.subst(engines, subst_list);
                 if let Some(ref mut r#else) = r#else {
-                    r#else.subst(type_mapping, engines);
+                    r#else.subst(engines, subst_list);
                 }
             }
             AsmExpression {
@@ -622,7 +620,7 @@ impl SubstTypes for TyExpressionVariant {
             } => {
                 registers
                     .iter_mut()
-                    .for_each(|x| x.subst(type_mapping, engines));
+                    .for_each(|x| x.subst(engines, subst_list));
             }
             // like a variable expression but it has multiple parts,
             // like looking up a field in a struct
@@ -632,54 +630,54 @@ impl SubstTypes for TyExpressionVariant {
                 ref mut resolved_type_of_parent,
                 ..
             } => {
-                resolved_type_of_parent.subst(type_mapping, engines);
-                field_to_access.subst(type_mapping, engines);
-                prefix.subst(type_mapping, engines);
+                resolved_type_of_parent.subst(engines, subst_list);
+                field_to_access.subst(engines, subst_list);
+                prefix.subst(engines, subst_list);
             }
             TupleElemAccess {
                 prefix,
                 ref mut resolved_type_of_parent,
                 ..
             } => {
-                resolved_type_of_parent.subst(type_mapping, engines);
-                prefix.subst(type_mapping, engines);
+                resolved_type_of_parent.subst(engines, subst_list);
+                prefix.subst(engines, subst_list);
             }
             EnumInstantiation {
                 enum_decl,
                 contents,
                 ..
             } => {
-                enum_decl.subst(type_mapping, engines);
+                enum_decl.subst(engines, subst_list);
                 if let Some(ref mut contents) = contents {
-                    contents.subst(type_mapping, engines)
+                    contents.subst(engines, subst_list)
                 };
             }
-            AbiCast { address, .. } => address.subst(type_mapping, engines),
+            AbiCast { address, .. } => address.subst(engines, subst_list),
             // storage is never generic and cannot be monomorphized
             StorageAccess { .. } => (),
             IntrinsicFunction(kind) => {
-                kind.subst(type_mapping, engines);
+                kind.subst(engines, subst_list);
             }
             EnumTag { exp } => {
-                exp.subst(type_mapping, engines);
+                exp.subst(engines, subst_list);
             }
             UnsafeDowncast { exp, variant } => {
-                exp.subst(type_mapping, engines);
-                variant.subst(type_mapping, engines);
+                exp.subst(engines, subst_list);
+                variant.subst(engines, subst_list);
             }
             AbiName(_) => (),
             WhileLoop {
                 ref mut condition,
                 ref mut body,
             } => {
-                condition.subst(type_mapping, engines);
-                body.subst(type_mapping, engines);
+                condition.subst(engines, subst_list);
+                body.subst(engines, subst_list);
             }
             Break => (),
             Continue => (),
-            Reassignment(reassignment) => reassignment.subst(type_mapping, engines),
+            Reassignment(reassignment) => reassignment.subst(engines, subst_list),
             StorageReassignment(..) => (),
-            Return(stmt) => stmt.subst(type_mapping, engines),
+            Return(stmt) => stmt.subst(engines, subst_list),
         }
     }
 }

@@ -54,14 +54,4 @@ impl<'a> InstructContext<'a> {
             instructions: self.instructions,
         }
     }
-
-    /// Scope the [InstructContext] with the given [Namespace].
-    pub(crate) fn scoped(self) -> InstructContext<'a> {
-        InstructContext {
-            type_engine: self.type_engine,
-            decl_engine: self.decl_engine,
-            decl_map: self.decl_map,
-            instructions: self.instructions,
-        }
-    }
 }

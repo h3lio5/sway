@@ -79,6 +79,7 @@ pub(crate) fn matcher(
     // unify the type of the scrutinee with the type of the expression
     check!(
         CompileResult::from(type_engine.unify(
+            ctx.namespace,
             decl_engine,
             type_id,
             exp.return_type,

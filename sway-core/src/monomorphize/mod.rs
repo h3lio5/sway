@@ -4,6 +4,7 @@ mod instruct;
 mod instructions;
 mod priv_prelude;
 mod solve;
+mod substitute;
 
 use crate::{engine_threading::*, language::ty, CompileResult};
 

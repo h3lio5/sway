@@ -31,6 +31,7 @@ pub(crate) fn instantiate_if_expression(
         };
         append!(
             type_engine.unify(
+                ctx.namespace,
                 ctx.decl_engine,
                 then.return_type,
                 ty_to_check,
@@ -54,6 +55,7 @@ pub(crate) fn instantiate_if_expression(
             // if this does not deterministically_abort, check the block return type
             append!(
                 type_engine.unify(
+                    ctx.namespace,
                     ctx.decl_engine,
                     r#else.return_type,
                     ty_to_check,
@@ -75,6 +77,7 @@ pub(crate) fn instantiate_if_expression(
     // if there is a type annotation, then the else branch must exist
     if !else_deterministically_aborts && !then_deterministically_aborts {
         let (mut new_warnings, mut new_errors) = type_engine.unify(
+            ctx.namespace,
             ctx.decl_engine,
             then.return_type,
             r#else_ret_ty,

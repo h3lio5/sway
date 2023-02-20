@@ -6,7 +6,7 @@ use std::{
 use sway_types::Ident;
 
 use crate::{
-    decl_engine::DeclId,
+    decl_engine::{DeclId, Template},
     engine_threading::*,
     language::{ty, CallPath},
     type_system::*,
@@ -23,6 +23,11 @@ pub(crate) enum Constraint {
         subst_list: TypeSubstList,
         arguments: Vec<TypeId>,
     },
+    /// Declaration.
+    Decl {
+        decl_id: DeclId,
+        subst_list: Template<TypeSubstList>,
+    },
 }
 
 impl Constraint {
@@ -30,6 +35,7 @@ impl Constraint {
         match self {
             Constraint::Ty(_) => 0,
             Constraint::FnCall { .. } => 1,
+            Constraint::Decl { .. } => 2,
         }
     }
 }
@@ -61,6 +67,47 @@ impl From<&ty::TyExpressionVariant> for Constraint {
                 arguments: args_helper(arguments),
             },
             _ => unimplemented!(),
+        }
+    }
+}
+
+impl From<&ty::TyDeclaration> for Constraint {
+    fn from(value: &ty::TyDeclaration) -> Self {
+        match value {
+            ty::TyDeclaration::FunctionDeclaration {
+                decl_id,
+                type_subst_list,
+                ..
+            }
+            | ty::TyDeclaration::TraitDeclaration {
+                decl_id,
+                type_subst_list,
+                ..
+            }
+            | ty::TyDeclaration::StructDeclaration {
+                decl_id,
+                type_subst_list,
+                ..
+            }
+            | ty::TyDeclaration::EnumDeclaration {
+                decl_id,
+                type_subst_list,
+                ..
+            }
+            | ty::TyDeclaration::ImplTrait {
+                decl_id,
+                type_subst_list,
+                ..
+            } => Constraint::Decl {
+                decl_id: *decl_id,
+                subst_list: type_subst_list.clone(),
+            },
+            ty::TyDeclaration::VariableDeclaration(_)
+            | ty::TyDeclaration::ConstantDeclaration { .. }
+            | ty::TyDeclaration::AbiDeclaration { .. }
+            | ty::TyDeclaration::GenericTypeForFunctionScope { .. }
+            | ty::TyDeclaration::StorageDeclaration { .. }
+            | ty::TyDeclaration::ErrorRecovery(_) => panic!(),
         }
     }
 }
@@ -100,6 +147,16 @@ impl PartialEqWithEngines for Constraint {
                         .map(|(l, r)| type_engine.get(*l).eq(&type_engine.get(*r), type_engine))
                         .all(|b| b)
             }
+            (
+                Constraint::Decl {
+                    decl_id: ldi,
+                    subst_list: lsl,
+                },
+                Constraint::Decl {
+                    decl_id: rdi,
+                    subst_list: rsl,
+                },
+            ) => ldi == rdi && lsl.inner().eq(rsl.inner(), type_engine),
             _ => false,
         }
     }
@@ -107,9 +164,9 @@ impl PartialEqWithEngines for Constraint {
 
 impl HashWithEngines for Constraint {
     fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        state.write_u8(self.discriminant_value());
         match self {
             Constraint::Ty(type_id) => {
-                state.write_u8(self.discriminant_value());
                 type_engine.get(*type_id).hash(state, type_engine);
             }
             Constraint::FnCall {
@@ -118,13 +175,19 @@ impl HashWithEngines for Constraint {
                 subst_list,
                 arguments,
             } => {
-                state.write_u8(self.discriminant_value());
                 call_path.hash(state);
                 decl_id.hash(state);
                 subst_list.hash(state, type_engine);
                 arguments
                     .iter()
                     .for_each(|arg| type_engine.get(*arg).hash(state, type_engine));
+            }
+            Constraint::Decl {
+                decl_id,
+                subst_list,
+            } => {
+                decl_id.hash(state);
+                subst_list.inner().hash(state, type_engine);
             }
         }
     }
@@ -163,6 +226,18 @@ impl OrdWithEngines for Constraint {
                             })
                         })
                 }),
+            (
+                Constraint::Decl {
+                    decl_id: ldi,
+                    subst_list: lsl,
+                },
+                Constraint::Decl {
+                    decl_id: rdi,
+                    subst_list: rsl,
+                },
+            ) => ldi
+                .cmp(rdi)
+                .then_with(|| lsl.inner().cmp(rsl.inner(), type_engine)),
             (l, r) => l.discriminant_value().cmp(&r.discriminant_value()),
         }
     }

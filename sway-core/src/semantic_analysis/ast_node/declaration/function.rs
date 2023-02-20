@@ -7,6 +7,7 @@ use sway_error::{
 };
 
 use crate::{
+    decl_engine::Template,
     error::*,
     language::{parsed::*, ty, Visibility},
     semantic_analysis::*,
@@ -20,7 +21,7 @@ impl ty::TyFunctionDeclaration {
         fn_decl: FunctionDeclaration,
         is_method: bool,
         is_in_impl_self: bool,
-    ) -> CompileResult<(ty::TyFunctionDeclaration, TypeSubstList)> {
+    ) -> CompileResult<(ty::TyFunctionDeclaration, Template<TypeSubstList>)> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
@@ -71,11 +72,6 @@ impl ty::TyFunctionDeclaration {
             warnings,
             errors
         );
-
-        // Push the type subst list onto the stack.
-        ctx.namespace
-            .get_type_subst_stack()
-            .push(type_subst_list.clone());
 
         // type check the function parameters, which will also insert them into the namespace
         let mut new_parameters = vec![];
@@ -183,6 +179,7 @@ fn unify_return_statements(
     for stmt in return_statements.iter() {
         check!(
             CompileResult::from(type_engine.unify(
+                ctx.namespace,
                 decl_engine,
                 stmt.return_type,
                 return_type,

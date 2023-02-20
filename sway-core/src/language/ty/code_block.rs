@@ -25,10 +25,10 @@ impl HashWithEngines for TyCodeBlock {
 }
 
 impl SubstTypes for TyCodeBlock {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
         self.contents
             .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+            .for_each(|x| x.subst(engines, subst_list));
     }
 }
 

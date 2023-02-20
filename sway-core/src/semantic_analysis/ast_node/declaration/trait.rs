@@ -15,7 +15,7 @@ impl ty::TyTraitDeclaration {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
         trait_decl: TraitDeclaration,
-    ) -> CompileResult<Self> {
+    ) -> CompileResult<(ty::TyTraitDeclaration, Template<TypeSubstList>)> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
@@ -48,7 +48,7 @@ impl ty::TyTraitDeclaration {
 
         // Type check the type parameters. This will also insert them into the
         // current namespace.
-        let (new_type_parameters, _) = check!(
+        let (new_type_parameters, type_subst_list) = check!(
             TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters, true),
             return err(warnings, errors),
             warnings,
@@ -117,7 +117,7 @@ impl ty::TyTraitDeclaration {
                 ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true, false),
                 (
                     ty::TyFunctionDeclaration::error(method),
-                    TypeSubstList::new()
+                    Template::new(TypeSubstList::new())
                 ),
                 warnings,
                 errors
@@ -130,7 +130,7 @@ impl ty::TyTraitDeclaration {
             });
         }
 
-        let typed_trait_decl = ty::TyTraitDeclaration {
+        let trait_decl = ty::TyTraitDeclaration {
             name,
             type_parameters: new_type_parameters,
             interface_surface: new_interface_surface,
@@ -140,7 +140,8 @@ impl ty::TyTraitDeclaration {
             attributes,
             span,
         };
-        ok(typed_trait_decl, warnings, errors)
+
+        ok((trait_decl, type_subst_list), warnings, errors)
     }
 
     /// Retrieves the interface surface and implemented methods for this trait.
@@ -235,7 +236,8 @@ impl ty::TyTraitDeclaration {
                 warnings,
                 errors
             );
-            method.subst(&type_mapping, engines);
+            todo!();
+            // method.subst(&type_mapping, engines);
             impld_method_refs.insert(
                 method.name.clone(),
                 DeclRef {
@@ -303,7 +305,7 @@ impl ty::TyTraitDeclaration {
             );
             todo!();
             // method.replace_self_type(engines, type_id);
-            method.subst(&type_mapping, engines);
+            // method.subst(&type_mapping, engines);
             all_method_refs.push(DeclRef {
                 name: todo!(),
                 id: ctx
@@ -322,7 +324,7 @@ impl ty::TyTraitDeclaration {
             );
             todo!();
             // method.replace_self_type(engines, type_id);
-            method.subst(&type_mapping, engines);
+            // method.subst(&type_mapping, engines);
             all_method_refs.push(DeclRef {
                 name: todo!(),
                 id: ctx.decl_engine.insert(type_engine, method),

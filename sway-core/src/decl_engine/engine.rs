@@ -15,7 +15,10 @@ use crate::{
 /// Used inside of type inference to store declarations.
 #[derive(Debug, Default)]
 pub struct DeclEngine {
+    /// Holds all of the declarations.
     slab: ConcurrentSlab<DeclWrapper>,
+
+    /// Map from declaration -> id so that id's are unique.
     id_map: RwLock<HashMap<DeclWrapper, DeclId>>,
 }
 
@@ -47,15 +50,14 @@ impl DeclEngine {
     where
         T: Into<(Ident, DeclWrapper, Span)>,
     {
-        let (_, decl_wrapper, span) = decl.into();
-        self.insert_wrapper(type_engine, decl_wrapper, span)
+        let (_, decl_wrapper, _) = decl.into();
+        self.insert_wrapper(type_engine, decl_wrapper)
     }
 
     pub(crate) fn insert_wrapper(
         &self,
         type_engine: &TypeEngine,
         decl_wrapper: DeclWrapper,
-        span: Span,
     ) -> DeclId {
         let mut id_map = self.id_map.write().unwrap();
 
@@ -66,13 +68,13 @@ impl DeclEngine {
             .raw_entry_mut()
             .from_hash(decl_hash, |x| x.eq(&decl_wrapper, type_engine))
         {
-            RawEntryMut::Occupied(o) => o.get().clone(),
+            RawEntryMut::Occupied(o) => *o.get(),
             RawEntryMut::Vacant(v) => {
                 let decl_id = DeclId::new(self.slab.insert(decl_wrapper.clone()));
                 v.insert_with_hasher(
                     decl_hash,
                     decl_wrapper,
-                    decl_id.clone(),
+                    decl_id,
                     make_hasher(&hash_builder, type_engine),
                 );
                 decl_id

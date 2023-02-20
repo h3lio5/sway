@@ -573,18 +573,15 @@ impl TraitMap {
                         .into_iter()
                         .map(|(name, decl_ref)| {
                             let mut decl = decl_engine.get(&decl_ref);
-                            decl.subst(&type_mapping, engines);
+                            todo!();
+                            // decl.subst(&type_mapping, engines);
                             todo!();
                             // decl.replace_self_type(engines, new_self_type);
                             (
                                 name,
                                 DeclRef {
                                     name: todo!(),
-                                    id: decl_engine.insert_wrapper(
-                                        type_engine,
-                                        decl,
-                                        decl_ref.span(),
-                                    ),
+                                    id: decl_engine.insert_wrapper(type_engine, decl),
                                     subst_list: todo!(),
                                     decl_span: todo!(),
                                 },

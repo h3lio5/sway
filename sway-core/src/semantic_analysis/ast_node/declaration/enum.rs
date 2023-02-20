@@ -1,4 +1,5 @@
 use crate::{
+    decl_engine::Template,
     error::*,
     language::{parsed::*, ty, CallPath},
     semantic_analysis::*,
@@ -6,7 +7,10 @@ use crate::{
 };
 
 impl ty::TyEnumDeclaration {
-    pub fn type_check(ctx: TypeCheckContext, decl: EnumDeclaration) -> CompileResult<Self> {
+    pub fn type_check(
+        ctx: TypeCheckContext,
+        decl: EnumDeclaration,
+    ) -> CompileResult<(ty::TyEnumDeclaration, Template<TypeSubstList>)> {
         let mut errors = vec![];
         let mut warnings = vec![];
 
@@ -26,7 +30,7 @@ impl ty::TyEnumDeclaration {
 
         // Type check the type parameters. This will also insert them into the
         // current namespace.
-        let (new_type_parameters, _) = check!(
+        let (new_type_parameters, type_subst_list) = check!(
             TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters, true),
             return err(warnings, errors),
             warnings,
@@ -48,7 +52,7 @@ impl ty::TyEnumDeclaration {
         call_path = call_path.to_fullpath(ctx.namespace);
 
         // create the enum decl
-        let decl = ty::TyEnumDeclaration {
+        let enum_decl = ty::TyEnumDeclaration {
             call_path,
             type_parameters: new_type_parameters,
             variants: variants_buf,
@@ -56,7 +60,8 @@ impl ty::TyEnumDeclaration {
             attributes,
             visibility,
         };
-        ok(decl, warnings, errors)
+
+        ok((enum_decl, type_subst_list), warnings, errors)
     }
 }
 

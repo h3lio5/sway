@@ -1,7 +1,7 @@
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Span;
 
-use crate::{decl_engine::DeclId, language::ty, monomorphize::priv_prelude::*, TypeSubstList};
+use crate::{decl_engine::DeclId, language::ty, monomorphize::priv_prelude::*};
 
 pub(crate) fn gather_from_decl(
     ctx: GatherContext,
@@ -14,12 +14,10 @@ pub(crate) fn gather_from_decl(
         }
         ty::TyDeclaration::ConstantDeclaration { .. } => todo!(),
         ty::TyDeclaration::FunctionDeclaration {
-            name,
-            decl_id,
-            type_subst_list,
-            decl_span,
+            decl_id, decl_span, ..
         } => {
-            gather_from_fn_decl(ctx, handler, decl_id, type_subst_list.inner(), decl_span)?;
+            ctx.add_constraint(decl.into());
+            gather_from_fn_decl(ctx, handler, decl_id, decl_span)?;
         }
         ty::TyDeclaration::TraitDeclaration { .. } => todo!(),
         ty::TyDeclaration::StructDeclaration { .. } => todo!(),
@@ -38,17 +36,12 @@ fn gather_from_fn_decl(
     mut ctx: GatherContext,
     handler: &Handler,
     decl_id: &DeclId,
-    type_subst_list: &TypeSubstList,
     decl_span: &Span,
 ) -> Result<(), ErrorEmitted> {
     let decl = ctx
         .decl_engine
         .get_function(decl_id, decl_span)
         .map_err(|err| handler.emit_err(err))?;
-
-    if !type_subst_list.is_empty() {
-        unimplemented!("{}", decl.name);
-    }
 
     let ty::TyFunctionDeclaration {
         body,

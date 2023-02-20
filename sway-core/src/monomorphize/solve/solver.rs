@@ -78,18 +78,14 @@ impl<'a> Solver<'a> {
 
         for constraint in constraints.into_iter() {
             let instruction_res = match &constraint {
-                Constraint::Ty(type_id) => self.helper_ty_use(handler, *type_id)?,
+                // these might be necessary (?) but right now they are not used
+                Constraint::Ty(_) => InstructionResult::NoInstruction,
+                Constraint::Decl { .. } => InstructionResult::NoInstruction,
                 Constraint::FnCall {
                     decl_id,
                     subst_list,
-                    arguments,
                     ..
-                } => self.helper_fn_call(
-                    handler,
-                    decl_id.clone(),
-                    subst_list.clone(),
-                    arguments.clone(),
-                )?,
+                } => self.helper_fn_call(handler, *decl_id, subst_list.clone())?,
             };
             match instruction_res {
                 InstructionResult::NewInstructions(instruction_res) => {
@@ -163,9 +159,28 @@ impl<'a> Solver<'a> {
         handler: &Handler,
         decl_id: DeclId,
         subst_list: TypeSubstList,
-        arguments: Vec<TypeId>,
     ) -> Result<InstructionResult, ErrorEmitted> {
         let mut instructions = vec![];
+
+        // let engines = Engines::new(self.type_engine, self.decl_engine);
+        // let mut decl = self.decl_engine.get(&decl_id);
+        // match decl {
+        //     DeclWrapper::Function(ref mut fn_decl) => {
+        //         fn_decl.subst(engines, &subst_list);
+        //     }
+        //     DeclWrapper::Trait(_) => todo!(),
+        //     DeclWrapper::ImplTrait(_) => todo!(),
+        //     DeclWrapper::Struct(_) => todo!(),
+        //     DeclWrapper::Enum(_) => todo!(),
+        //     // None of these would generate a [TypeSubstList] anyway.
+        //     DeclWrapper::Unknown
+        //     | DeclWrapper::Storage(_)
+        //     | DeclWrapper::Abi(_)
+        //     | DeclWrapper::Constant(_)
+        //     | DeclWrapper::TraitFn(_) => {}
+        // }
+        // self.decl_engine
+        //     .insert_into_mono_cache(self.type_engine, decl_id, subst_list, decl);
 
         let res: InstructionResult = subst_list
             .iter()
@@ -181,9 +196,7 @@ impl<'a> Solver<'a> {
             }
         }
 
-        if !subst_list.is_empty() {
-            instructions.push(Instruction::MonomorphizeDecl(decl_id, subst_list));
-        }
+        instructions.push(Instruction::MonomorphizeDecl(decl_id, subst_list));
 
         Ok(InstructionResult::from_instructions(instructions))
     }

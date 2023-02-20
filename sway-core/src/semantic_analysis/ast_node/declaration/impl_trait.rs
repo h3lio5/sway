@@ -16,7 +16,7 @@ impl ty::TyImplTrait {
     pub(crate) fn type_check_impl_trait(
         mut ctx: TypeCheckContext,
         impl_trait: ImplTrait,
-    ) -> CompileResult<Self> {
+    ) -> CompileResult<(ty::TyImplTrait, Template<TypeSubstList>)> {
         let mut errors = vec![];
         let mut warnings = vec![];
 
@@ -40,7 +40,7 @@ impl ty::TyImplTrait {
 
         // Type check the type parameters. This will also insert them into the
         // current namespace.
-        let (new_impl_type_parameters, _) = check!(
+        let (new_impl_type_parameters, impl_type_subst_list) = check!(
             TypeParameter::type_check_type_params(ctx.by_ref(), impl_type_parameters, true),
             return err(warnings, errors),
             warnings,
@@ -150,21 +150,23 @@ impl ty::TyImplTrait {
                     warnings,
                     errors
                 );
-                ty::TyImplTrait {
+                let trait_decl_ref = Some(DeclRef::new(
+                    trait_decl.name.clone(),
+                    *decl_id,
+                    todo!(),
+                    trait_decl.span.clone(),
+                ));
+                let impl_trait = ty::TyImplTrait {
                     impl_type_parameters: new_impl_type_parameters,
                     trait_name: trait_name.clone(),
                     trait_type_arguments,
-                    trait_decl_ref: Some(DeclRef::new(
-                        trait_decl.name.clone(),
-                        *decl_id,
-                        todo!(),
-                        trait_decl.span.clone(),
-                    )),
+                    trait_decl_ref,
                     span: block_span,
                     methods: new_methods,
                     implementing_for_type_id,
                     type_implementing_for_span: type_implementing_for_span.clone(),
-                }
+                };
+                (impl_trait, impl_type_subst_list)
             }
             Some(ty::TyDeclaration::AbiDeclaration { decl_id, .. }) => {
                 // if you are comparing this with the `impl_trait` branch above, note that
@@ -211,7 +213,7 @@ impl ty::TyImplTrait {
                 );
                 let trait_decl_ref =
                     Some(DeclRef::new(abi.name.clone(), *decl_id, todo!(), abi.span));
-                ty::TyImplTrait {
+                let impl_trait = ty::TyImplTrait {
                     impl_type_parameters: vec![], // this is empty because abi definitions don't support generics
                     trait_name,
                     trait_type_arguments: vec![], // this is empty because abi definitions don't support generics
@@ -220,7 +222,8 @@ impl ty::TyImplTrait {
                     methods: new_methods,
                     implementing_for_type_id,
                     type_implementing_for_span,
-                }
+                };
+                (impl_trait, impl_type_subst_list)
             }
             Some(_) | None => {
                 errors.push(CompileError::UnknownTrait {
@@ -434,7 +437,7 @@ impl ty::TyImplTrait {
     pub(crate) fn type_check_impl_self(
         ctx: TypeCheckContext,
         impl_self: ImplSelf,
-    ) -> CompileResult<Self> {
+    ) -> CompileResult<(ty::TyImplTrait, Template<TypeSubstList>)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -466,7 +469,7 @@ impl ty::TyImplTrait {
 
         // Type check the type parameters. This will also insert them into the
         // current namespace.
-        let (new_impl_type_parameters, _) = check!(
+        let (new_impl_type_parameters, impl_type_subst_list) = check!(
             TypeParameter::type_check_type_params(ctx.by_ref(), impl_type_parameters, true),
             return err(warnings, errors),
             warnings,
@@ -562,7 +565,8 @@ impl ty::TyImplTrait {
             implementing_for_type_id,
             type_implementing_for_span,
         };
-        ok(impl_trait, warnings, errors)
+
+        ok((impl_trait, impl_type_subst_list), warnings, errors)
     }
 }
 

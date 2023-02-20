@@ -2,7 +2,7 @@ use sway_error::error::CompileError;
 use sway_types::Spanned;
 
 use crate::{
-    decl_engine::DeclRef,
+    decl_engine::{DeclRef, Template},
     error::*,
     language::{parsed::*, ty},
     semantic_analysis::{Mode, TypeCheckContext},
@@ -68,7 +68,7 @@ impl ty::TyAbiDeclaration {
                 ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true, false),
                 (
                     ty::TyFunctionDeclaration::error(method.clone()),
-                    TypeSubstList::new()
+                    Template::new(TypeSubstList::new())
                 ),
                 warnings,
                 errors
@@ -85,7 +85,7 @@ impl ty::TyAbiDeclaration {
             new_methods.push(DeclRef::new(
                 method.name.clone(),
                 *ctx.decl_engine.insert(type_engine, method),
-                method_subst_list,
+                method_subst_list.into_inner(),
                 method_span,
             ));
         }

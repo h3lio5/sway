@@ -44,9 +44,9 @@ impl HashWithEngines for TyVariableDeclaration {
 }
 
 impl SubstTypes for TyVariableDeclaration {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.return_type.subst(type_mapping, engines);
-        self.type_ascription.subst(type_mapping, engines);
-        self.body.subst(type_mapping, engines)
+    fn subst_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
+        self.return_type.subst(engines, subst_list);
+        self.type_ascription.subst(engines, subst_list);
+        self.body.subst(engines, subst_list)
     }
 }

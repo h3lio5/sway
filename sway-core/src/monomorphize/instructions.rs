@@ -38,14 +38,13 @@ impl PartialEqWithEngines for Instruction {
 
 impl HashWithEngines for Instruction {
     fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        state.write_u8(self.discriminant_value());
         match self {
             Instruction::MonomorphizeType(type_id, subst_list) => {
-                state.write_u8(self.discriminant_value());
                 type_engine.get(*type_id).hash(state, type_engine);
                 subst_list.hash(state, type_engine);
             }
             Instruction::MonomorphizeDecl(decl_id, subst_list) => {
-                state.write_u8(self.discriminant_value());
                 decl_id.hash(state);
                 subst_list.hash(state, type_engine);
             }

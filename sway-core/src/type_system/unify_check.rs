@@ -99,6 +99,11 @@ impl<'a> UnifyCheck<'a> {
         let left = self.type_engine.get(left);
         let right = self.type_engine.get(right);
         match (left, right) {
+            // the type param type can be coerced into any type
+            (TypeParam(_), _) => true,
+            // any type can be coerced into the type param type
+            (_, TypeParam(_)) => true,
+
             // the placeholder type can be coerced into any type
             (Placeholder(_), _) => true,
             // any type can be coerced into the placeholder type

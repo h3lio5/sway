@@ -281,11 +281,12 @@ impl<'a> TypeCheckContext<'a> {
     /// Short-hand around `type_system::unify`, where the `TypeCheckContext`
     /// provides the type annotation and help text.
     pub(crate) fn unify(
-        &self,
+        &mut self,
         ty: TypeId,
         span: &Span,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         self.type_engine.unify(
+            self.namespace,
             self.decl_engine,
             ty,
             self.type_annotation(),

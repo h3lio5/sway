@@ -1,12 +1,13 @@
 use sway_types::{Span, Spanned};
 
 use crate::{
+    decl_engine::Template,
     engine_threading::*,
     error::*,
     language::{ty, CallPath},
     semantic_analysis::TypeCheckContext,
     type_system::*,
-    CreateTypeId, Ident,
+    Ident,
 };
 
 /// A `TypeBinding` is the result of using turbofish to bind types to
@@ -212,7 +213,6 @@ impl TypeBinding<CallPath> {
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
         let engines = ctx.engines();
 
         // grab the declaration
@@ -223,19 +223,21 @@ impl TypeBinding<CallPath> {
             errors
         );
 
-        // replace the self types inside of the type arguments
-        for type_argument in self.type_arguments.to_vec_mut().iter_mut() {
-            check!(
-                ctx.resolve_type(
-                    type_argument.type_id,
-                    &type_argument.span,
-                    EnforceTypeArguments::Yes,
-                    None
-                ),
-                type_engine.insert(TypeInfo::ErrorRecovery),
-                warnings,
-                errors,
-            );
+        // Type check the type arguments.
+        if let TypeArgs::Regular(_) = self.type_arguments {
+            for type_argument in self.type_arguments.to_vec_mut().iter_mut() {
+                check!(
+                    ctx.resolve_type(
+                        type_argument.type_id,
+                        &type_argument.span,
+                        EnforceTypeArguments::Yes,
+                        None
+                    ),
+                    type_engine.insert(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors,
+                );
+            }
         }
 
         if !errors.is_empty() {
@@ -247,27 +249,21 @@ impl TypeBinding<CallPath> {
         // monomorphize the declaration, if needed
         let new_decl = match unknown_decl {
             ty::TyDeclaration::FunctionDeclaration {
-                decl_id: original_id,
+                decl_id,
                 name,
                 type_subst_list,
                 decl_span,
             } => {
-                // get the copy from the declaration engine
-                let mut new_copy = check!(
-                    CompileResult::from(decl_engine.get_function(&original_id, &self.span())),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let mut type_subst_list = type_subst_list.fresh_value(engines);
 
-                // monomorphize the copy, in place
+                // Monomorphize the [TypeSubstList].
                 if let TypeArgs::Regular(_) = self.type_arguments {
                     check!(
-                        ctx.monomorphize(
-                            &mut new_copy,
+                        type_subst_list.monomorphize(
                             self.type_arguments.to_vec_mut(),
                             EnforceTypeArguments::No,
-                            &self.span
+                            &name,
+                            &self.span,
                         ),
                         return err(warnings, errors),
                         warnings,
@@ -275,99 +271,70 @@ impl TypeBinding<CallPath> {
                     );
                 }
 
-                // insert the new copy into the declaration engine
-                let new_decl_id = ctx.decl_engine.insert(type_engine, new_copy);
-
                 ty::TyDeclaration::FunctionDeclaration {
                     name,
-                    decl_id: new_decl_id,
-                    type_subst_list,
+                    decl_id,
+                    type_subst_list: Template::new(type_subst_list),
                     decl_span,
                 }
             }
             ty::TyDeclaration::EnumDeclaration {
-                decl_id: original_id,
-                type_subst_list,
+                decl_id,
                 name,
+                type_subst_list,
                 decl_span,
             } => {
-                // get the copy from the declaration engine
-                let mut new_copy = check!(
-                    CompileResult::from(decl_engine.get_enum(&original_id, &self.span())),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let mut type_subst_list = type_subst_list.fresh_value(engines);
 
-                // monomorphize the copy, in place
-                check!(
-                    ctx.monomorphize(
-                        &mut new_copy,
-                        self.type_arguments.to_vec_mut(),
-                        EnforceTypeArguments::No,
-                        &self.span
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-
-                // take any trait methods that apply to this type and copy them to the new type
-                ctx.namespace.insert_trait_implementation_for_type(
-                    engines,
-                    new_copy.create_type_id(engines),
-                );
-
-                // insert the new copy into the declaration engine
-                let new_decl_id = ctx.decl_engine.insert(type_engine, new_copy);
+                // Monomorphize the [TypeSubstList].
+                if let TypeArgs::Regular(_) = self.type_arguments {
+                    check!(
+                        type_subst_list.monomorphize(
+                            self.type_arguments.to_vec_mut(),
+                            EnforceTypeArguments::No,
+                            &name,
+                            &self.span,
+                        ),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                }
 
                 ty::TyDeclaration::EnumDeclaration {
                     name,
-                    decl_id: new_decl_id,
-                    type_subst_list: todo!(),
+                    decl_id,
+                    type_subst_list: Template::new(type_subst_list),
                     decl_span,
                 }
             }
             ty::TyDeclaration::StructDeclaration {
-                decl_id: original_id,
-                type_subst_list,
+                decl_id,
                 name,
+                type_subst_list,
                 decl_span,
             } => {
-                // get the copy from the declaration engine
-                let mut new_copy = check!(
-                    CompileResult::from(decl_engine.get_struct(&original_id, &self.span())),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let mut type_subst_list = type_subst_list.fresh_value(engines);
 
-                // monomorphize the copy, in place
-                check!(
-                    ctx.monomorphize(
-                        &mut new_copy,
-                        self.type_arguments.to_vec_mut(),
-                        EnforceTypeArguments::No,
-                        &self.span
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-
-                // take any trait methods that apply to this type and copy them to the new type
-                ctx.namespace.insert_trait_implementation_for_type(
-                    engines,
-                    new_copy.create_type_id(engines),
-                );
-
-                // insert the new copy into the declaration engine
-                let new_decl_id = ctx.decl_engine.insert(type_engine, new_copy);
+                // Monomorphize the [TypeSubstList].
+                if let TypeArgs::Regular(_) = self.type_arguments {
+                    check!(
+                        type_subst_list.monomorphize(
+                            self.type_arguments.to_vec_mut(),
+                            EnforceTypeArguments::No,
+                            &name,
+                            &self.span,
+                        ),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                }
 
                 ty::TyDeclaration::StructDeclaration {
                     name,
-                    decl_id: new_decl_id,
-                    type_subst_list: todo!(),
+                    decl_id,
+                    type_subst_list: Template::new(type_subst_list),
                     decl_span,
                 }
             }

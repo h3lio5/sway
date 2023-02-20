@@ -382,6 +382,7 @@ fn unify_arguments_and_parameters(
         // unify the type of the argument with the type of the param
         check!(
             CompileResult::from(type_engine.unify(
+                ctx.namespace,
                 decl_engine,
                 arg.return_type,
                 param.type_argument.type_id,

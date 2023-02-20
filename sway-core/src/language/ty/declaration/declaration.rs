@@ -153,33 +153,42 @@ impl HashWithEngines for TyDeclaration {
 }
 
 impl SubstTypes for TyDeclaration {
-    fn subst_inner(&mut self, _type_mapping: &TypeSubstMap, _engines: Engines<'_>) {
-        todo!();
-        // use TyDeclaration::*;
-        // match self {
-        //     VariableDeclaration(ref mut var_decl) => var_decl.subst(type_mapping, engines),
-        //     FunctionDeclaration {
-        //         ref mut decl_id, ..
-        //     }
-        //     | TraitDeclaration {
-        //         ref mut decl_id, ..
-        //     }
-        //     | StructDeclaration {
-        //         ref mut decl_id, ..
-        //     }
-        //     | EnumDeclaration {
-        //         ref mut decl_id, ..
-        //     }
-        //     | ImplTrait {
-        //         ref mut decl_id, ..
-        //     } => decl_id.subst(type_mapping, engines),
-        //     // generics in an ABI is unsupported by design
-        //     AbiDeclaration { .. }
-        //     | ConstantDeclaration { .. }
-        //     | StorageDeclaration { .. }
-        //     | GenericTypeForFunctionScope { .. }
-        //     | ErrorRecovery(_) => (),
-        // }
+    fn subst_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
+        match self {
+            TyDeclaration::VariableDeclaration(ref mut var_decl) => {
+                var_decl.subst(engines, subst_list);
+            }
+            // Do not proceed with type substitution if the next node is one that
+            // would have captured the subst list.
+            TyDeclaration::FunctionDeclaration {
+                ref mut type_subst_list,
+                ..
+            }
+            | TyDeclaration::TraitDeclaration {
+                ref mut type_subst_list,
+                ..
+            }
+            | TyDeclaration::StructDeclaration {
+                ref mut type_subst_list,
+                ..
+            }
+            | TyDeclaration::EnumDeclaration {
+                ref mut type_subst_list,
+                ..
+            }
+            | TyDeclaration::ImplTrait {
+                ref mut type_subst_list,
+                ..
+            } => {
+                type_subst_list.inner_mut().subst_from_front(subst_list);
+            }
+            // These types do not support generics by default.
+            TyDeclaration::AbiDeclaration { .. }
+            | TyDeclaration::ConstantDeclaration { .. }
+            | TyDeclaration::GenericTypeForFunctionScope { .. }
+            | TyDeclaration::StorageDeclaration { .. }
+            | TyDeclaration::ErrorRecovery(_) => todo!(),
+        }
     }
 }
 
@@ -338,67 +347,6 @@ impl GetDeclIdent for TyDeclaration {
     }
 }
 
-impl GetDeclRef for TyDeclaration {
-    fn get_decl_ref(&self) -> Option<DeclRef> {
-        match self {
-            TyDeclaration::VariableDeclaration(_) => todo!("not a declaration id yet"),
-            TyDeclaration::FunctionDeclaration {
-                name,
-                decl_id,
-                type_subst_list,
-                decl_span,
-            }
-            | TyDeclaration::TraitDeclaration {
-                name,
-                decl_id,
-                type_subst_list,
-                decl_span,
-            }
-            | TyDeclaration::StructDeclaration {
-                name,
-                decl_id,
-                type_subst_list,
-                decl_span,
-            }
-            | TyDeclaration::EnumDeclaration {
-                name,
-                decl_id,
-                type_subst_list,
-                decl_span,
-            }
-            | TyDeclaration::ImplTrait {
-                name,
-                decl_id,
-                type_subst_list,
-                decl_span,
-            } => Some(DeclRef::new(
-                name.clone(),
-                **decl_id,
-                type_subst_list.fresh_copy(),
-                decl_span.clone(),
-            )),
-            TyDeclaration::ConstantDeclaration {
-                name,
-                decl_id,
-                decl_span,
-            }
-            | TyDeclaration::AbiDeclaration {
-                name,
-                decl_id,
-                decl_span,
-            } => Some(DeclRef::new(
-                name.clone(),
-                **decl_id,
-                TypeSubstList::new(),
-                decl_span.clone(),
-            )),
-            TyDeclaration::GenericTypeForFunctionScope { .. } => None,
-            TyDeclaration::ErrorRecovery(_) => None,
-            TyDeclaration::StorageDeclaration { .. } => None,
-        }
-    }
-}
-
 impl TyDeclaration {
     /// Retrieves the declaration as an enum declaration.
     ///
@@ -461,18 +409,22 @@ impl TyDeclaration {
         &self,
         decl_engine: &DeclEngine,
         access_span: &Span,
-    ) -> CompileResult<TyFunctionDeclaration> {
+    ) -> CompileResult<(TyFunctionDeclaration, DeclId, Template<TypeSubstList>)> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match self {
-            TyDeclaration::FunctionDeclaration { decl_id, .. } => {
+            TyDeclaration::FunctionDeclaration {
+                decl_id,
+                type_subst_list,
+                ..
+            } => {
                 let decl = check!(
                     CompileResult::from(decl_engine.get_function(decl_id, access_span)),
                     return err(warnings, errors),
                     warnings,
                     errors,
                 );
-                ok(decl, warnings, errors)
+                ok((decl, *decl_id, type_subst_list.clone()), warnings, errors)
             }
             TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
             decl => {

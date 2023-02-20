@@ -11,7 +11,9 @@ use sway_types::Spanned;
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
     mut ctx: TypeCheckContext,
-    function_decl_ref: DeclRef,
+    fn_decl: ty::TyFunctionDeclaration,
+    fn_decl_id: DeclId,
+    fn_type_subst_list: TypeSubstList,
     call_path_binding: TypeBinding<CallPath>,
     arguments: Option<Vec<Expression>>,
     span: Span,
@@ -19,10 +21,7 @@ pub(crate) fn instantiate_function_application(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
-
-    let function_decl = decl_engine.get_function(&function_decl_ref, &span).unwrap();
 
     if arguments.is_none() {
         errors.push(CompileError::MissingParenthesesForFunction {
@@ -34,26 +33,22 @@ pub(crate) fn instantiate_function_application(
     let arguments = arguments.unwrap_or_default();
 
     // 'purity' is that of the callee, 'opts.purity' of the caller.
-    if !ctx.purity().can_call(function_decl.purity) {
+    if !ctx.purity().can_call(fn_decl.purity) {
         errors.push(CompileError::StorageAccessMismatch {
-            attrs: promote_purity(ctx.purity(), function_decl.purity).to_attribute_syntax(),
+            attrs: promote_purity(ctx.purity(), fn_decl.purity).to_attribute_syntax(),
             span: call_path_binding.span(),
         });
     }
 
     // check that the number of parameters and the number of the arguments is the same
     check!(
-        check_function_arguments_arity(
-            arguments.len(),
-            &function_decl,
-            &call_path_binding.inner,
-            false
-        ),
+        check_function_arguments_arity(arguments.len(), &fn_decl, &call_path_binding.inner, false),
         return err(warnings, errors),
         warnings,
         errors
     );
 
+    // Type check the arguments.
     let typed_arguments = check!(
         type_check_arguments(ctx.by_ref(), arguments),
         return err(warnings, errors),
@@ -61,17 +56,29 @@ pub(crate) fn instantiate_function_application(
         errors
     );
 
+    // Unify the types of the arguments and the types of the parameters.
+    ctx.namespace
+        .get_app_subst_list_stack()
+        .push(fn_type_subst_list);
     let typed_arguments_with_names = check!(
-        unify_arguments_and_parameters(ctx.by_ref(), typed_arguments, &function_decl.parameters),
+        unify_arguments_and_parameters(ctx.by_ref(), typed_arguments, &fn_decl.parameters),
         return err(warnings, errors),
         warnings,
         errors
     );
+    let fn_type_subst_list = ctx.namespace.get_app_subst_list_stack().pop().unwrap();
 
     // Retrieve the implemented traits for the type of the return type and
     // insert them in the broader namespace.
     ctx.namespace
-        .insert_trait_implementation_for_type(engines, function_decl.return_type.type_id);
+        .insert_trait_implementation_for_type(engines, fn_decl.return_type.type_id);
+
+    let function_decl_ref = DeclRef::new(
+        fn_decl.name.clone(),
+        *fn_decl_id,
+        fn_type_subst_list,
+        fn_decl.span.clone(),
+    );
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
@@ -83,7 +90,7 @@ pub(crate) fn instantiate_function_application(
             selector: None,
             type_binding: Some(call_path_binding.strip_inner()),
         },
-        return_type: function_decl.return_type.type_id,
+        return_type: fn_decl.return_type.type_id,
         span,
     };
 
@@ -142,6 +149,7 @@ fn unify_arguments_and_parameters(
         // unify the type of the argument with the type of the param
         check!(
             CompileResult::from(type_engine.unify(
+                ctx.namespace,
                 decl_engine,
                 arg.return_type,
                 param.type_argument.type_id,

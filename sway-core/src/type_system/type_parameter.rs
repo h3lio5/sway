@@ -87,11 +87,11 @@ impl OrdWithEngines for TypeParameter {
 }
 
 impl SubstTypes for TypeParameter {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.type_id.subst(type_mapping, engines);
+    fn subst_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
+        self.type_id.subst(engines, subst_list);
         self.trait_constraints
             .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+            .for_each(|x| x.subst(engines, subst_list));
     }
 }
 
@@ -115,21 +115,24 @@ impl fmt::Debug for TypeParameter {
 
 impl TypeParameter {
     /// Type check a list of [TypeParameter] and return a new list of
-    /// [TypeParameter]. This will also insert this new list into the current
-    /// namespace.
+    /// [TypeParameter] and a [TypeSubstList]. This will also insert the list of
+    /// [TypeParameter]s and the [TypeSubstList] into the current namespace.
     pub(crate) fn type_check_type_params(
         mut ctx: TypeCheckContext,
         type_params: Vec<TypeParameter>,
         disallow_trait_constraints: bool,
-    ) -> CompileResult<(Vec<TypeParameter>, TypeSubstList)> {
+    ) -> CompileResult<(Vec<TypeParameter>, Template<TypeSubstList>)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
+        let engines = ctx.engines();
+
         let mut new_type_params: Vec<TypeParameter> = vec![];
-        let mut subst_list = ctx
+        let mut subst_list: TypeSubstList = ctx
             .namespace
-            .get_type_subst_stack()
+            .get_template_subst_list_stack()
             .pop()
+            .map(|t| t.fresh_value(engines))
             .unwrap_or_default();
 
         for type_param in type_params.into_iter() {
@@ -139,13 +142,23 @@ impl TypeParameter {
                 }];
                 return err(vec![], errors);
             }
-            new_type_params.push(check!(
-                TypeParameter::type_check(ctx.by_ref(), type_param),
+            let (body_type_param, subst_type_param) = check!(
+                TypeParameter::type_check(ctx.by_ref(), type_param, subst_list.len()),
                 continue,
                 warnings,
                 errors
-            ));
+            );
+            new_type_params.push(body_type_param);
+            subst_list.push(subst_type_param);
         }
+
+        let subst_list: Template<TypeSubstList> =
+            Template::new(subst_list.set_num_from_the_current_scope(new_type_params.len()));
+
+        // Push the type subst list onto the stack.
+        ctx.namespace
+            .get_template_subst_list_stack()
+            .push(subst_list.clone());
 
         if errors.is_empty() {
             ok((new_type_params, subst_list), warnings, errors)
@@ -156,7 +169,16 @@ impl TypeParameter {
 
     /// Type checks a [TypeParameter] (including its [TraitConstraint]s) and
     /// inserts into into the current namespace.
-    fn type_check(mut ctx: TypeCheckContext, type_parameter: TypeParameter) -> CompileResult<Self> {
+    ///
+    /// This function returns two [TypeParameter]s. The first is based on the
+    /// value of `n` and is designated to go in the body of the AST object for
+    /// which this [TypeParameter] was created. The second is the "oracle"
+    /// [TypeParameter] and is designated to go in the parent [TypeSubstList].
+    fn type_check(
+        mut ctx: TypeCheckContext,
+        type_parameter: TypeParameter,
+        n: usize,
+    ) -> CompileResult<(TypeParameter, TypeParameter)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -182,39 +204,57 @@ impl TypeParameter {
 
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
 
-        let type_id = type_engine.insert(TypeInfo::UnknownGeneric {
-            name: name_ident.clone(),
-            trait_constraints: VecSet(trait_constraints.clone()),
-        });
+        // Create the "body type param".
+        let body_type_id = type_engine.insert(TypeInfo::TypeParam(n));
+        let body_type_param = TypeParameter {
+            type_id: body_type_id,
+            initial_type_id,
+            name_ident: name_ident.clone(),
+            trait_constraints: trait_constraints.clone(),
+            trait_constraints_span: trait_constraints_span.clone(),
+        };
 
-        // Insert the trait constraints into the namespace.
+        // Insert the trait constraints into the namespace using the "body type
+        // param".
         for trait_constraint in trait_constraints.iter() {
             check!(
-                TraitConstraint::insert_into_namespace(ctx.by_ref(), type_id, trait_constraint),
+                TraitConstraint::insert_into_namespace(
+                    ctx.by_ref(),
+                    body_type_id,
+                    trait_constraint
+                ),
                 return err(warnings, errors),
                 warnings,
                 errors
             );
         }
 
-        // Insert the type parameter into the namespace as a dummy type
+        // Insert the "body type param" into the namespace as a dummy
         // declaration.
-        let type_parameter_decl = ty::TyDeclaration::GenericTypeForFunctionScope {
-            name: name_ident.clone(),
-            type_id,
-        };
         ctx.namespace
-            .insert_symbol(name_ident.clone(), type_parameter_decl)
+            .insert_symbol(
+                name_ident.clone(),
+                ty::TyDeclaration::GenericTypeForFunctionScope {
+                    name: name_ident.clone(),
+                    type_id: body_type_id,
+                },
+            )
             .ok(&mut warnings, &mut errors);
 
-        let type_parameter = TypeParameter {
-            name_ident,
+        // Create the "subst type param".
+        let type_id = type_engine.insert(TypeInfo::UnknownGeneric {
+            name: name_ident.clone(),
+            trait_constraints: VecSet(trait_constraints.clone()),
+        });
+        let subst_type_param = TypeParameter {
             type_id,
             initial_type_id,
+            name_ident,
             trait_constraints,
             trait_constraints_span,
         };
-        ok(type_parameter, warnings, errors)
+
+        ok((body_type_param, subst_type_param), warnings, errors)
     }
 }
 

@@ -23,4 +23,5 @@ pub(super) use super::{
         instruction_result::InstructionResult, iteration_report::IterationReport, solver::Solver,
         ConstraintPQ, ConstraintWrapper,
     },
+    substitute::subst,
 };

@@ -45,12 +45,12 @@ impl HashWithEngines for TyIntrinsicFunctionKind {
 }
 
 impl SubstTypes for TyIntrinsicFunctionKind {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
         for arg in &mut self.arguments {
-            arg.subst(type_mapping, engines);
+            arg.subst(engines, subst_list);
         }
         for targ in &mut self.type_arguments {
-            targ.type_id.subst(type_mapping, engines);
+            targ.type_id.subst(engines, subst_list);
         }
     }
 }

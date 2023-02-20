@@ -28,7 +28,7 @@ impl ty::TyProgram {
         let mod_span = root.tree.span.clone();
         let mod_res = ty::TyModule::type_check(ctx, root);
         mod_res
-            .flat_map(|mut root| monomorphize::monomorphize(engines, &mut root).map(|_| root))
+            .ok_map(|mut root| monomorphize::monomorphize(engines, &mut root).map(|_| root))
             .flat_map(|root| {
                 let res = Self::validate_root(engines, &root, kind.clone(), mod_span);
                 res.map(|(kind, declarations, configurables)| Self {

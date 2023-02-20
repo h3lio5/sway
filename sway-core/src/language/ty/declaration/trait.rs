@@ -60,16 +60,16 @@ impl HashWithEngines for TyTraitDeclaration {
 }
 
 impl SubstTypes for TyTraitDeclaration {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+            .for_each(|x| x.subst(engines, subst_list));
         self.interface_surface
             .iter_mut()
             .for_each(|function_decl_ref| {
                 let new_decl_ref = function_decl_ref
                     .clone()
-                    .subst_types_and_insert_new(type_mapping, engines);
+                    .subst_types_and_insert_new(engines, subst_list);
                 function_decl_ref.replace_id((&new_decl_ref).into());
             });
         // we don't have to type check the methods because it hasn't been type checked yet

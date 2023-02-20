@@ -38,18 +38,18 @@ impl fmt::Display for DeclWrapper {
 }
 
 impl SubstTypes for DeclWrapper {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
         match self {
             DeclWrapper::Unknown => {}
-            DeclWrapper::Function(decl) => decl.subst(type_mapping, engines),
-            DeclWrapper::Trait(decl) => decl.subst(type_mapping, engines),
-            DeclWrapper::TraitFn(decl) => decl.subst(type_mapping, engines),
-            DeclWrapper::ImplTrait(decl) => decl.subst(type_mapping, engines),
-            DeclWrapper::Struct(decl) => decl.subst(type_mapping, engines),
+            DeclWrapper::Function(decl) => decl.subst(engines, subst_list),
+            DeclWrapper::Trait(decl) => decl.subst(engines, subst_list),
+            DeclWrapper::TraitFn(decl) => decl.subst(engines, subst_list),
+            DeclWrapper::ImplTrait(decl) => decl.subst(engines, subst_list),
+            DeclWrapper::Struct(decl) => decl.subst(engines, subst_list),
             DeclWrapper::Storage(_) => {}
             DeclWrapper::Abi(_) => {}
             DeclWrapper::Constant(_) => {}
-            DeclWrapper::Enum(decl) => decl.subst(type_mapping, engines),
+            DeclWrapper::Enum(decl) => decl.subst(engines, subst_list),
         }
     }
 }

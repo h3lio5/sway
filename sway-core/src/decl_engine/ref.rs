@@ -44,16 +44,16 @@ impl DeclRef {
 
     pub(crate) fn subst_types_and_insert_new(
         &self,
-        type_mapping: &TypeSubstMap,
         engines: Engines<'_>,
+        subst_list: &TypeSubstList,
     ) -> DeclRef {
         let type_engine = engines.te();
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
-        decl.subst(type_mapping, engines);
+        decl.subst(engines, subst_list);
         DeclRef {
             name: todo!(),
-            id: decl_engine.insert_wrapper(type_engine, decl, self.decl_span.clone()),
+            id: decl_engine.insert_wrapper(type_engine, decl),
             subst_list: todo!(),
             decl_span: todo!(),
         }
@@ -106,10 +106,10 @@ impl Spanned for DeclRef {
 }
 
 impl SubstTypes for DeclRef {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
-        decl.subst(type_mapping, engines);
+        decl.subst(engines, subst_list);
         decl_engine.replace(self, decl);
     }
 }

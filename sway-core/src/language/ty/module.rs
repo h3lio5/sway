@@ -63,7 +63,7 @@ impl TyModule {
                         DeclRef::new(
                             name.clone(),
                             **decl_id,
-                            type_subst_list.fresh_copy(),
+                            type_subst_list.inner().clone(),
                             decl_span.clone(),
                         ),
                     ));

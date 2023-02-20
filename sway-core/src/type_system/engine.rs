@@ -104,84 +104,85 @@ impl TypeEngine {
     where
         T: MonomorphizeHelper + SubstTypes,
     {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let engines = Engines::new(self, decl_engine);
-        match (
-            value.type_parameters().is_empty(),
-            type_arguments.is_empty(),
-        ) {
-            (true, true) => ok((), warnings, errors),
-            (false, true) => {
-                if let EnforceTypeArguments::Yes = enforce_type_arguments {
-                    errors.push(CompileError::NeedsTypeArguments {
-                        name: value.name().clone(),
-                        span: call_site_span.clone(),
-                    });
-                    return err(warnings, errors);
-                }
-                let type_mapping =
-                    TypeSubstMap::from_type_parameters(engines, value.type_parameters());
-                value.subst(&type_mapping, engines);
-                ok((), warnings, errors)
-            }
-            (true, false) => {
-                let type_arguments_span = type_arguments
-                    .iter()
-                    .map(|x| x.span.clone())
-                    .reduce(Span::join)
-                    .unwrap_or_else(|| value.name().span());
-                errors.push(CompileError::DoesNotTakeTypeArguments {
-                    name: value.name().clone(),
-                    span: type_arguments_span,
-                });
-                err(warnings, errors)
-            }
-            (false, false) => {
-                let type_arguments_span = type_arguments
-                    .iter()
-                    .map(|x| x.span.clone())
-                    .reduce(Span::join)
-                    .unwrap_or_else(|| value.name().span());
-                if value.type_parameters().len() != type_arguments.len() {
-                    errors.push(CompileError::IncorrectNumberOfTypeArguments {
-                        given: type_arguments.len(),
-                        expected: value.type_parameters().len(),
-                        span: type_arguments_span,
-                    });
-                    return err(warnings, errors);
-                }
-                for type_argument in type_arguments.iter_mut() {
-                    type_argument.type_id = check!(
-                        self.resolve(
-                            decl_engine,
-                            type_argument.type_id,
-                            &type_argument.span,
-                            enforce_type_arguments,
-                            None,
-                            namespace,
-                            mod_path
-                        ),
-                        self.insert(TypeInfo::ErrorRecovery),
-                        warnings,
-                        errors
-                    );
-                }
-                let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
-                    value
-                        .type_parameters()
-                        .iter()
-                        .map(|type_param| type_param.type_id)
-                        .collect(),
-                    type_arguments
-                        .iter()
-                        .map(|type_arg| type_arg.type_id)
-                        .collect(),
-                );
-                value.subst(&type_mapping, engines);
-                ok((), warnings, errors)
-            }
-        }
+        todo!()
+        // let mut warnings = vec![];
+        // let mut errors = vec![];
+        // let engines = Engines::new(self, decl_engine);
+        // match (
+        //     value.type_parameters().is_empty(),
+        //     type_arguments.is_empty(),
+        // ) {
+        //     (true, true) => ok((), warnings, errors),
+        //     (false, true) => {
+        //         if let EnforceTypeArguments::Yes = enforce_type_arguments {
+        //             errors.push(CompileError::NeedsTypeArguments {
+        //                 name: value.name().clone(),
+        //                 span: call_site_span.clone(),
+        //             });
+        //             return err(warnings, errors);
+        //         }
+        //         let type_mapping =
+        //             TypeSubstMap::from_type_parameters(engines, value.type_parameters());
+        //         value.subst(&type_mapping, engines);
+        //         ok((), warnings, errors)
+        //     }
+        //     (true, false) => {
+        //         let type_arguments_span = type_arguments
+        //             .iter()
+        //             .map(|x| x.span.clone())
+        //             .reduce(Span::join)
+        //             .unwrap_or_else(|| value.name().span());
+        //         errors.push(CompileError::DoesNotTakeTypeArguments {
+        //             name: value.name().clone(),
+        //             span: type_arguments_span,
+        //         });
+        //         err(warnings, errors)
+        //     }
+        //     (false, false) => {
+        //         let type_arguments_span = type_arguments
+        //             .iter()
+        //             .map(|x| x.span.clone())
+        //             .reduce(Span::join)
+        //             .unwrap_or_else(|| value.name().span());
+        //         if value.type_parameters().len() != type_arguments.len() {
+        //             errors.push(CompileError::IncorrectNumberOfTypeArguments {
+        //                 given: type_arguments.len(),
+        //                 expected: value.type_parameters().len(),
+        //                 span: type_arguments_span,
+        //             });
+        //             return err(warnings, errors);
+        //         }
+        //         for type_argument in type_arguments.iter_mut() {
+        //             type_argument.type_id = check!(
+        //                 self.resolve(
+        //                     decl_engine,
+        //                     type_argument.type_id,
+        //                     &type_argument.span,
+        //                     enforce_type_arguments,
+        //                     None,
+        //                     namespace,
+        //                     mod_path
+        //                 ),
+        //                 self.insert(TypeInfo::ErrorRecovery),
+        //                 warnings,
+        //                 errors
+        //             );
+        //         }
+        //         let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
+        //             value
+        //                 .type_parameters()
+        //                 .iter()
+        //                 .map(|type_param| type_param.type_id)
+        //                 .collect(),
+        //             type_arguments
+        //                 .iter()
+        //                 .map(|type_arg| type_arg.type_id)
+        //                 .collect(),
+        //         );
+        //         value.subst(&type_mapping, engines);
+        //         ok((), warnings, errors)
+        //     }
+        // }
     }
 
     /// Make the types of `received` and `expected` equivalent (or produce an
@@ -191,8 +192,10 @@ impl TypeEngine {
     /// `expected`, except in cases where `received` has more type information
     /// than `expected` (e.g. when `expected` is a generic type and `received`
     /// is not).
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn unify(
         &self,
+        namespace: &mut Namespace,
         decl_engine: &DeclEngine,
         received: TypeId,
         expected: TypeId,
@@ -220,8 +223,10 @@ impl TypeEngine {
             }
             return (vec![], errors);
         }
-        let (warnings, errors) =
-            normalize_err(Unifier::new(engines, help_text).unify(received, expected, span));
+        let (warnings, errors) = normalize_err(
+            Unifier::new(engines, namespace.get_app_subst_list_stack(), help_text)
+                .unify(received, expected, span),
+        );
         if errors.is_empty() {
             (warnings, errors)
         } else if err_override.is_some() {
@@ -277,8 +282,10 @@ impl TypeEngine {
     /// What's important about this is flipping the arguments prioritizes
     /// unifying `expected`, meaning if both `received` and `expected` are
     /// generic types, then `expected` will be replaced with `received`.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn unify_adt(
         &self,
+        namespace: &mut Namespace,
         decl_engine: &DeclEngine,
         received: TypeId,
         expected: TypeId,
@@ -307,7 +314,7 @@ impl TypeEngine {
             return (vec![], errors);
         }
         let (warnings, errors) = normalize_err(
-            Unifier::new(engines, help_text)
+            Unifier::new(engines, namespace.get_app_subst_list_stack(), help_text)
                 .flip_arguments()
                 .unify(expected, received, span),
         );

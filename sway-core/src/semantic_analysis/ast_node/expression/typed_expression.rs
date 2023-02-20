@@ -31,6 +31,7 @@ use crate::{
     Engines,
 };
 
+use serde::__private::de;
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::{
     convert_parse_tree_error::ConvertParseTreeError,
@@ -485,7 +486,7 @@ impl ty::TyExpression {
         );
 
         // check that the decl is a function decl
-        let _ = check!(
+        let (fn_decl, fn_decl_id, fn_type_subst_list) = check!(
             unknown_decl.expect_function(decl_engine, &span),
             return err(warnings, errors),
             warnings,
@@ -494,7 +495,9 @@ impl ty::TyExpression {
 
         instantiate_function_application(
             ctx,
-            unknown_decl.get_decl_ref().unwrap(),
+            fn_decl,
+            fn_decl_id,
+            fn_type_subst_list.into_inner(),
             call_path_binding,
             Some(arguments),
             span,
@@ -1104,7 +1107,9 @@ impl ty::TyExpression {
                 .and_then(|decl| {
                     decl.expect_function(decl_engine, &span)
                         .ok(&mut function_probe_warnings, &mut function_probe_errors)
-                        .map(|_s| (decl.get_decl_ref().unwrap(), call_path_binding))
+                        .map(|(fn_decl, fn_decl_id, fn_type_subst_list)| {
+                            (fn_decl, fn_decl_id, fn_type_subst_list, call_path_binding)
+                        })
                 })
         };
 
@@ -1154,7 +1159,8 @@ impl ty::TyExpression {
                     errors
                 )
             }
-            (false, Some((decl_ref, call_path_binding)), None, None) => {
+            (false, Some(maybe_fn), None, None) => {
+                let (fn_decl, fn_decl_id, fn_type_subst_list, call_path_binding) = maybe_fn;
                 warnings.append(&mut function_probe_warnings);
                 errors.append(&mut function_probe_errors);
                 // In case `foo::bar::<TyArgs>::baz(...)` throw an error.
@@ -1167,7 +1173,15 @@ impl ty::TyExpression {
                     );
                 }
                 check!(
-                    instantiate_function_application(ctx, decl_ref, call_path_binding, args, span),
+                    instantiate_function_application(
+                        ctx,
+                        fn_decl,
+                        fn_decl_id,
+                        fn_type_subst_list.into_inner(),
+                        call_path_binding,
+                        args,
+                        span
+                    ),
                     return err(warnings, errors),
                     warnings,
                     errors
