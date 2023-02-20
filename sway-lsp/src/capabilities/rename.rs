@@ -7,8 +7,10 @@ use crate::{
 };
 use std::collections::HashMap;
 use std::sync::Arc;
-use sway_types::Spanned;
+use sway_types::{Spanned, Span, Ident};
 use tower_lsp::lsp_types::{Position, PrepareRenameResponse, TextEdit, Url, WorkspaceEdit};
+
+const RAW_MODIFIER: &str = "r#";
 
 pub fn rename(
     session: Arc<Session>,
@@ -24,7 +26,12 @@ pub fn rename(
         .token_map()
         .all_references_of_token(&token, &session.type_engine.read())
     {
-        let range = get_range_from_span(&ident.span());
+        let span = if ident.is_raw_ident() {
+            span_from_raw(&ident.span())?
+        } else {
+            ident.span()
+        };
+        let range = get_range_from_span(&span);
         edits.push(TextEdit::new(range, new_name.clone()));
     }
 
@@ -33,6 +40,16 @@ pub fn rename(
         map_of_changes.insert(url, edits);
         WorkspaceEdit::new(map_of_changes)
     })
+}
+
+// TODO add comment
+fn span_from_raw(s: &Span) -> Option<Span> {
+    Span::new(
+        Arc::from(format!("{}{}", RAW_MODIFIER, s.src())),
+        s.start()-2,
+        s.end(),
+        s.path().cloned()
+    )
 }
 
 pub fn prepare_rename(
