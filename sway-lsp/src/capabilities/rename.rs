@@ -7,10 +7,10 @@ use crate::{
 };
 use std::collections::HashMap;
 use std::sync::Arc;
-use sway_types::{Spanned, Span, Ident};
+use sway_types::{Ident, Span, Spanned};
 use tower_lsp::lsp_types::{Position, PrepareRenameResponse, TextEdit, Url, WorkspaceEdit};
 
-const RAW_MODIFIER: &str = "r#";
+const RAW_IDENTIFIER: &str = "r#";
 
 pub fn rename(
     session: Arc<Session>,
@@ -26,12 +26,12 @@ pub fn rename(
         .token_map()
         .all_references_of_token(&token, &session.type_engine.read())
     {
-        let span = if ident.is_raw_ident() {
-            span_from_raw(&ident.span())?
-        } else {
-            ident.span()
-        };
-        let range = get_range_from_span(&span);
+        let mut range = get_range_from_span(&ident.span());
+        if ident.is_raw_ident() {
+            // Make sure the start char starts at the begining,
+            // taking the r# tokens into account.
+            range.start.character -= RAW_IDENTIFIER.len() as u32;
+        }
         edits.push(TextEdit::new(range, new_name.clone()));
     }
 
@@ -40,16 +40,6 @@ pub fn rename(
         map_of_changes.insert(url, edits);
         WorkspaceEdit::new(map_of_changes)
     })
-}
-
-// TODO add comment
-fn span_from_raw(s: &Span) -> Option<Span> {
-    Span::new(
-        Arc::from(format!("{}{}", RAW_MODIFIER, s.src())),
-        s.start()-2,
-        s.end(),
-        s.path().cloned()
-    )
 }
 
 pub fn prepare_rename(
@@ -86,8 +76,14 @@ pub fn prepare_rename(
         ));
     }
 
+    let mut name = ident.as_str().to_string();
+    // Prefix r# onto the name if the ident is raw.
+    if ident.is_raw_ident() {
+        name = format!("{}{}", RAW_IDENTIFIER, name);
+    }
+
     Ok(PrepareRenameResponse::RangeWithPlaceholder {
         range: get_range_from_span(&ident.span()),
-        placeholder: ident.as_str().to_string(),
+        placeholder: name,
     })
 }
