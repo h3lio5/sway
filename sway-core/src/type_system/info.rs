@@ -100,11 +100,13 @@ pub enum TypeInfo {
         call_path: CallPath,
         type_parameters: Vec<TypeParameter>,
         variant_types: Vec<ty::TyEnumVariant>,
+        // decl_ref: DeclRef, (contains a DeclId and TypeSubstList)
     },
     Struct {
         call_path: CallPath,
         type_parameters: Vec<TypeParameter>,
         fields: Vec<ty::TyStructField>,
+        // decl_ref: DeclRef, (contains a DeclId and TypeSubstList)
     },
     Boolean,
     Tuple(Vec<TypeArgument>),

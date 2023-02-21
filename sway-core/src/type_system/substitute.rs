@@ -44,6 +44,24 @@ pub struct TypeSubstList {
     num_from_the_current_scope: usize,
 }
 
+/*
+
+[T] struct Data<0> {
+    value: 0
+}
+
+[T] impl<0> Data<0> {
+    [T, U] fn foo<1>(value: 0, other: 1) -> Data<0> {
+        log(other);
+        Data {
+            value
+        }
+    }
+}
+
+
+*/
+
 impl TypeSubstList {
     pub(crate) fn new() -> TypeSubstList {
         TypeSubstList {

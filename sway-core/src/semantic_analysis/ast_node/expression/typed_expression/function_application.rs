@@ -8,6 +8,63 @@ use std::collections::HashMap;
 use sway_error::error::CompileError;
 use sway_types::Spanned;
 
+/*
+
+fn baz<T>() -> u64 {
+    log(size_of_type::<T>());
+    1u64
+}
+
+fn foo<T>(bar: T) -> T {
+    baz::<T>();
+    bar
+}
+
+foo(false);
+
+*/
+
+/*
+
+DeclId: 0
+[T] fn baz<0>() -> u64 {
+    log(size_of_type::<0>());
+    1u64
+}
+
+DeclId: 1
+[T] fn foo<0>(bar: 0) -> 0 {
+    baz::<0>();
+    bar
+}
+
+foo(false);
+
+-> instantiate_function_application
+fn_decl_id: 1
+fn_type_subst_list: [T: TypeId(0) -> TypeInfo::GenericType(T)]
+
+// "prep" the function.
+fn_type_subst_list: [T: TypeId(1) -> TypeInfo::GenericType(T)]
+
+// Type check the arguments.
+false: bool
+
+// Unify the types of the arguments and the types of the parameters.
+unify "found type" with "expected type"
+unify bool with TypeInfo::TypeParam(0) (this is coming from bar: TypeInfo::TypeParam(0))
+unify bool with "the element at 0 in the TypeSubstList from foo [T]" T: TypeId(1) -> TypeInfo::GenericType(T)
+this will replace TypeInfo::GenericType(T) with bool to create:
+
+[bool] fn foo<0>(bar: 0) -> 0 {
+    baz::<0>();
+    bar
+}
+
+for us to use in type checking this function application
+
+*/
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
     mut ctx: TypeCheckContext,
