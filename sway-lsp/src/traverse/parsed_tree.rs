@@ -361,6 +361,7 @@ impl<'a> ParsedTree<'a> {
                 }
                 storage_decl.attributes.parse(self.tokens);
             }
+            Declaration::TypeAliasDeclaration(_type_alias_decl) => {}
         }
     }
 

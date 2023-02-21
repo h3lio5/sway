@@ -63,6 +63,11 @@ pub enum TyDeclaration {
         decl_id: DeclId<TyStorageDeclaration>,
         decl_span: Span,
     },
+    TypeAliasDeclaration {
+        name: Ident,
+        decl_id: DeclId<TyTypeAliasDeclaration>,
+        decl_span: Span,
+    },
 }
 
 impl EqWithEngines for TyDeclaration {}
@@ -167,6 +172,10 @@ impl PartialEqWithEngines for TyDeclaration {
                 Self::StorageDeclaration { decl_id: rid, .. },
             ) => decl_engine.get(*lid).eq(&decl_engine.get(*rid), engines),
             (
+                Self::TypeAliasDeclaration { decl_id: lid, .. },
+                Self::TypeAliasDeclaration { decl_id: rid, .. },
+            ) => decl_engine.get(*lid).eq(&decl_engine.get(*rid), engines),
+            (
                 Self::GenericTypeForFunctionScope {
                     name: xn,
                     type_id: xti,
@@ -213,6 +222,9 @@ impl HashWithEngines for TyDeclaration {
             AbiDeclaration { decl_id, .. } => {
                 decl_engine.get(*decl_id).hash(state, engines);
             }
+            TypeAliasDeclaration { decl_id, .. } => {
+                decl_engine.get(*decl_id).hash(state, engines);
+            }
             StorageDeclaration { decl_id, .. } => {
                 decl_engine.get(*decl_id).hash(state, engines);
             }
@@ -245,6 +257,9 @@ impl SubstTypes for TyDeclaration {
             ImplTrait {
                 ref mut decl_id, ..
             } => decl_id.subst(type_mapping, engines),
+            TypeAliasDeclaration {
+                ref mut decl_id, ..
+            } => decl_id.subst(type_mapping, engines),
             // generics in an ABI is unsupported by design
             AbiDeclaration { .. }
             | ConstantDeclaration { .. }
@@ -273,6 +288,9 @@ impl ReplaceSelfType for TyDeclaration {
                 ref mut decl_id, ..
             } => decl_id.replace_self_type(engines, self_type),
             ImplTrait {
+                ref mut decl_id, ..
+            } => decl_id.replace_self_type(engines, self_type),
+            TypeAliasDeclaration {
                 ref mut decl_id, ..
             } => decl_id.replace_self_type(engines, self_type),
             // generics in an ABI is unsupported by design
@@ -316,6 +334,7 @@ impl Spanned for TyDeclaration {
             | ImplTrait { decl_span, .. }
             | ConstantDeclaration { decl_span, .. }
             | StorageDeclaration { decl_span, .. }
+            | TypeAliasDeclaration { decl_span, .. }
             | AbiDeclaration { decl_span, .. } => decl_span.clone(),
             GenericTypeForFunctionScope { name, .. } => name.span(),
             ErrorRecovery(span) => span.clone(),
@@ -421,6 +440,7 @@ impl CollectTypesMetadata for TyDeclaration {
             | EnumDeclaration { .. }
             | ImplTrait { .. }
             | AbiDeclaration { .. }
+            | TypeAliasDeclaration { .. }
             | GenericTypeForFunctionScope { .. } => vec![],
         };
         if errors.is_empty() {
@@ -442,6 +462,7 @@ impl GetDeclIdent for TyDeclaration {
             | TyDeclaration::ConstantDeclaration { name, .. }
             | TyDeclaration::ImplTrait { name, .. }
             | TyDeclaration::AbiDeclaration { name, .. }
+            | TyDeclaration::TypeAliasDeclaration { name, .. }
             | TyDeclaration::GenericTypeForFunctionScope { name, .. } => Some(name.clone()),
             TyDeclaration::ErrorRecovery(_) => None,
             TyDeclaration::StorageDeclaration { .. } => None,
@@ -620,6 +641,7 @@ impl TyDeclaration {
             GenericTypeForFunctionScope { .. } => "generic type parameter",
             ErrorRecovery(_) => "error",
             StorageDeclaration { .. } => "contract storage declaration",
+            TypeAliasDeclaration { .. } => "type alias declaration",
         }
     }
 
@@ -635,6 +657,7 @@ impl TyDeclaration {
             ImplTrait { .. } => "impl_trait",
             FunctionDeclaration { .. } => "fn",
             ConstantDeclaration { .. } => "constant",
+            TypeAliasDeclaration { .. } => "type alias",
             _ => unreachable!("these items are non-documentable"),
         }
     }
@@ -666,6 +689,10 @@ impl TyDeclaration {
                         fields: storage_decl.fields_as_typed_struct_fields(),
                     },
                 )
+            }
+            TyDeclaration::TypeAliasDeclaration { decl_id, .. } => {
+                let decl = decl_engine.get_type_alias(decl_id);
+                decl.create_type_id(engines)
             }
             TyDeclaration::GenericTypeForFunctionScope { type_id, .. } => *type_id,
             decl => {
@@ -701,6 +728,10 @@ impl TyDeclaration {
             }
             FunctionDeclaration { decl_id, .. } => {
                 let TyFunctionDeclaration { visibility, .. } = decl_engine.get_function(decl_id);
+                visibility
+            }
+            TypeAliasDeclaration { decl_id, .. } => {
+                let TyTypeAliasDeclaration { visibility, .. } = decl_engine.get_type_alias(decl_id);
                 visibility
             }
             GenericTypeForFunctionScope { .. }

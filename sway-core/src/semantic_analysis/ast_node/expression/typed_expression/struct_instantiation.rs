@@ -86,19 +86,21 @@ pub(crate) fn struct_instantiation(
 
     // extract the struct name and fields from the type info
     let type_info = type_engine.get(type_id);
+
     let (struct_name, struct_fields) = check!(
         type_info.expect_struct(engines, &span),
         return err(warnings, errors),
         warnings,
         errors
     );
-    let mut struct_fields = struct_fields.clone();
+
+    let mut struct_fields = struct_fields;
 
     let typed_fields = check!(
         type_check_field_arguments(
             ctx.by_ref(),
             &fields,
-            struct_name,
+            &struct_name.suffix,
             &mut struct_fields,
             &span
         ),
@@ -119,7 +121,7 @@ pub(crate) fn struct_instantiation(
         if !struct_fields.iter().any(|x| x.name == field.name) {
             errors.push(CompileError::StructDoesNotHaveField {
                 field_name: field.name.clone(),
-                struct_name: struct_name.clone(),
+                struct_name: struct_name.suffix.clone(),
                 span: field.span,
             });
         }
@@ -127,7 +129,7 @@ pub(crate) fn struct_instantiation(
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::StructExpression {
-            struct_name: struct_name.clone(),
+            struct_name: struct_name.suffix,
             fields: typed_fields,
             span: inner_span,
             call_path_binding,

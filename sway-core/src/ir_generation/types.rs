@@ -1,7 +1,7 @@
 use crate::{
     language::ty,
     type_system::{TypeId, TypeInfo},
-    TypeEngine,
+    TypeArgument, TypeEngine,
 };
 
 use super::convert::convert_resolved_typeid_no_span;
@@ -79,7 +79,7 @@ pub(super) fn get_struct_name_field_index_and_type(
     let ty_info = type_engine
         .to_typeinfo(field_type, &field_kind.span())
         .ok()?;
-    match (ty_info, field_kind) {
+    match (ty_info, &field_kind) {
         (
             TypeInfo::Struct {
                 call_path, fields, ..
@@ -90,9 +90,16 @@ pub(super) fn get_struct_name_field_index_and_type(
             fields
                 .iter()
                 .enumerate()
-                .find(|(_, field)| field.name == field_name)
+                .find(|(_, field)| field.name == field_name.clone())
                 .map(|(idx, field)| (idx as u64, field.type_argument.type_id)),
         )),
+        (
+            TypeInfo::Alias {
+                ty: TypeArgument { type_id, .. },
+                ..
+            },
+            _,
+        ) => get_struct_name_field_index_and_type(type_engine, type_id, field_kind),
         _otherwise => None,
     }
 }

@@ -123,6 +123,11 @@ impl<'a> Unifier<'a> {
                 (rn.suffix, rpts, rfs),
                 (en.suffix, etps, efs),
             ),
+
+            // Type aliases and the types they encapsulate coerce to each other.
+            (Alias { ty, .. }, _) => self.unify(ty.type_id, expected, span),
+            (_, Alias { ty, .. }) => self.unify(received, ty.type_id, span),
+
             // Let empty enums to coerce to any other type. This is useful for Never enum.
             (
                 Enum {

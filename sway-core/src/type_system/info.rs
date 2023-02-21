@@ -143,6 +143,12 @@ pub enum TypeInfo {
     /// gtf instruction, or manipulating u64s.
     RawUntypedPtr,
     RawUntypedSlice,
+    /// Type Alias. This type and the type `ty` it encapsulates always coerce. They are effectively
+    /// interchangeable
+    Alias {
+        name: Ident,
+        ty: TypeArgument,
+    },
 }
 
 impl HashWithEngines for TypeInfo {
@@ -206,6 +212,10 @@ impl HashWithEngines for TypeInfo {
                 count.hash(state);
             }
             TypeInfo::Placeholder(ty) => {
+                ty.hash(state, engines);
+            }
+            TypeInfo::Alias { name, ty } => {
+                name.hash(state);
                 ty.hash(state, engines);
             }
             TypeInfo::Numeric
@@ -314,6 +324,21 @@ impl PartialEqWithEngines for TypeInfo {
             (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
                 l_fields.eq(r_fields, engines)
             }
+            (
+                Self::Alias {
+                    name: l_name,
+                    ty: l_ty,
+                },
+                Self::Alias {
+                    name: r_name,
+                    ty: r_ty,
+                },
+            ) => {
+                l_name == r_name
+                    && type_engine
+                        .get(l_ty.type_id)
+                        .eq(&type_engine.get(r_ty.type_id), engines)
+            }
             (l, r) => l.discriminant_value() == r.discriminant_value(),
         }
     }
@@ -402,6 +427,20 @@ impl OrdWithEngines for TypeInfo {
             (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
                 l_fields.cmp(r_fields, type_engine)
             }
+            (
+                Self::Alias {
+                    name: l_name,
+                    ty: l_ty,
+                },
+                Self::Alias {
+                    name: r_name,
+                    ty: r_ty,
+                },
+            ) => type_engine
+                .get(l_ty.type_id)
+                .cmp(&type_engine.get(r_ty.type_id), type_engine)
+                .then_with(|| l_name.cmp(r_name)),
+
             (l, r) => l.discriminant_value().cmp(&r.discriminant_value()),
         }
     }
@@ -478,6 +517,9 @@ impl DisplayWithEngines for TypeInfo {
             Storage { .. } => "contract storage".into(),
             RawUntypedPtr => "raw untyped ptr".into(),
             RawUntypedSlice => "raw untyped slice".into(),
+            Alias { name, ty } => {
+                format!("type {} = {}", name, engines.help_out(ty))
+            }
         };
         write!(f, "{s}")
     }
@@ -575,6 +617,9 @@ impl UnconstrainedTypeParameters for TypeInfo {
             TypeInfo::Array(elem, _) => elem
                 .type_id
                 .type_parameter_is_unconstrained(engines, type_parameter),
+            TypeInfo::Alias { ty, .. } => ty
+                .type_id
+                .type_parameter_is_unconstrained(engines, type_parameter),
             TypeInfo::Unknown
             | TypeInfo::Str(_)
             | TypeInfo::UnsignedInteger(_)
@@ -620,6 +665,7 @@ impl TypeInfo {
             TypeInfo::Storage { .. } => 17,
             TypeInfo::RawUntypedPtr => 18,
             TypeInfo::RawUntypedSlice => 19,
+            TypeInfo::Alias { .. } => 20,
         }
     }
 
@@ -793,6 +839,16 @@ impl TypeInfo {
             }
             RawUntypedPtr => "rawptr".to_string(),
             RawUntypedSlice => "rawslice".to_string(),
+            Alias { ty, .. } => {
+                let name = type_engine
+                    .get(ty.type_id)
+                    .to_selector_name(type_engine, error_msg_span);
+                let name = match name.value {
+                    Some(name) => name,
+                    None => return name,
+                };
+                format!("{name}]")
+            }
             _ => {
                 return err(
                     vec![],
@@ -958,6 +1014,7 @@ impl TypeInfo {
             | TypeInfo::ErrorRecovery
             | TypeInfo::Array(_, _)
             | TypeInfo::Storage { .. }
+            | TypeInfo::Alias { .. }
             | TypeInfo::Placeholder(_) => {
                 errors.push(CompileError::TypeArgumentsNotAllowed { span: span.clone() });
                 err(warnings, errors)
@@ -1049,6 +1106,10 @@ impl TypeInfo {
                         );
                     }
                 }
+                TypeInfo::Alias { ty, .. } => {
+                    inner_types.insert(ty.type_id);
+                    inner_types.extend(type_engine.get(type_id).extract_inner_types(type_engine));
+                }
                 TypeInfo::Unknown
                 | TypeInfo::UnknownGeneric { .. }
                 | TypeInfo::Str(_)
@@ -1115,6 +1176,9 @@ impl TypeInfo {
                     inner_types.extend(helper(field.type_argument.type_id));
                 }
             }
+            TypeInfo::Alias { ty, .. } => {
+                inner_types.extend(helper(ty.type_id));
+            }
             TypeInfo::Unknown
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Str(_)
@@ -1160,6 +1224,7 @@ impl TypeInfo {
             | TypeInfo::Contract
             | TypeInfo::Array(_, _)
             | TypeInfo::Storage { .. }
+            | TypeInfo::Alias { .. }
             | TypeInfo::Placeholder(_) => {
                 errors.push(CompileError::Unimplemented(
                     "matching on this type is unsupported right now",
@@ -1198,6 +1263,7 @@ impl TypeInfo {
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::SelfType
             | TypeInfo::Storage { .. }
+            | TypeInfo::Alias { .. }
             | TypeInfo::Placeholder(_) => {
                 errors.push(CompileError::Unimplemented(
                     "implementing traits on this type is unsupported right now",
@@ -1332,6 +1398,17 @@ impl TypeInfo {
                         all_nested_types.append(&mut nested_types);
                     }
                 }
+            }
+            TypeInfo::Alias { ty, .. } => {
+                let mut nested_types = check!(
+                    type_engine
+                        .get(ty.type_id)
+                        .extract_nested_types(type_engine, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                all_nested_types.append(&mut nested_types);
             }
             TypeInfo::Unknown
             | TypeInfo::Str(_)
@@ -1594,6 +1671,9 @@ impl TypeInfo {
                     .collect::<Vec<_>>();
                 types_are_subset_of(engines, &l_types, &r_types)
             }
+            (Self::Alias { ty: l_ty, .. }, Self::Alias { ty: r_ty, .. }) => type_engine
+                .get(l_ty.type_id)
+                .is_subset_of(&type_engine.get(r_ty.type_id), engines),
             (a, b) => a.eq(b, engines),
         }
     }
@@ -1619,7 +1699,7 @@ impl TypeInfo {
         let mut errors = vec![];
         let type_engine = engines.te();
         match (self, subfields.split_first()) {
-            (TypeInfo::Struct { .. }, None) => err(warnings, errors),
+            (TypeInfo::Struct { .. } | TypeInfo::Alias { .. }, None) => err(warnings, errors),
             (
                 TypeInfo::Struct {
                     call_path, fields, ..
@@ -1658,6 +1738,15 @@ impl TypeInfo {
                 };
                 ok(field, warnings, errors)
             }
+            (
+                TypeInfo::Alias {
+                    ty: TypeArgument { type_id, .. },
+                    ..
+                },
+                _,
+            ) => type_engine
+                .get(*type_id)
+                .apply_subfields(engines, subfields, span),
             (TypeInfo::ErrorRecovery, _) => {
                 // dont create a new error in this case
                 err(warnings, errors)
@@ -1699,6 +1788,7 @@ impl TypeInfo {
             | TypeInfo::Contract
             | TypeInfo::Storage { .. }
             | TypeInfo::Numeric
+            | TypeInfo::Alias { .. }
             | TypeInfo::Placeholder(_) => true,
         }
     }
@@ -1768,22 +1858,41 @@ impl TypeInfo {
         }
     }
 
-    /// Given a `TypeInfo` `self`, expect that `self` is a `TypeInfo::Struct`,
-    /// and return its contents.
+    /// Given a `TypeInfo` `self`, expect that `self` is a `TypeInfo::Struct`, or a
+    /// `TypeInfo::Alias` of a struct type. Also, return the contents of the struct.
     ///
-    /// Returns an error if `self` is not a `TypeInfo::Struct`.
+    /// Note that this works recursively. That is, it supports a situation where a struct has a
+    /// chain of aliases such as:
+    ///
+    /// ```
+    /// struct MyStruct { x: u64 }
+    /// type Alias1 = MyStruct;
+    /// type Alias2 = Alias1;
+    ///
+    /// let s = Alias2 { x: 0 };
+    /// ```
+    ///
+    /// Returns an error if `self` is not a `TypeInfo::Struct` or a `TypeInfo::Alias` of a struct
+    /// type.
     #[allow(dead_code)]
     pub(crate) fn expect_struct(
         &self,
         engines: Engines<'_>,
         debug_span: &Span,
-    ) -> CompileResult<(&Ident, &Vec<ty::TyStructField>)> {
+    ) -> CompileResult<(CallPath, Vec<ty::TyStructField>)> {
         let warnings = vec![];
         let errors = vec![];
         match self {
             TypeInfo::Struct {
                 call_path, fields, ..
-            } => ok((&call_path.suffix, fields), warnings, errors),
+            } => ok((call_path.clone(), fields.to_vec()), warnings, errors),
+            TypeInfo::Alias {
+                ty: TypeArgument { type_id, .. },
+                ..
+            } => engines
+                .te()
+                .get(*type_id)
+                .expect_struct(engines, debug_span),
             TypeInfo::ErrorRecovery => err(warnings, errors),
             a => err(
                 vec![],

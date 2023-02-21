@@ -100,6 +100,7 @@ impl Parse for ItemKind {
             ItemKind::Configurable(item_configurable) => {
                 item_configurable.parse(tokens);
             }
+            ItemKind::TypeAlias(_item_type_alias) => todo!(),
         }
     }
 }
