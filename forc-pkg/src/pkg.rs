@@ -2244,6 +2244,12 @@ pub fn build(
                 let constant_declarations = vec![(contract_id_constant_name, contract_id_constant)];
                 const_inject_map.insert(pkg.clone(), constant_declarations);
             }
+            // TODO: remove this once https://github.com/FuelLabs/sway/issues/4162 is fixed
+            if is_contract_dependency && include_tests {
+                let contract_id =
+                    contract_id(&built_contract_without_tests, &fuel_tx::Salt::zeroed());
+                info!(" {} id for test execution:{}", pkg.name, contract_id)
+            }
             Some(built_contract_without_tests.bytecode)
         } else {
             None
