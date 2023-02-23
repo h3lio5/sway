@@ -153,8 +153,13 @@ impl TxContractTest for Contract {
         input_predicate_length(index).unwrap()
     }
     fn get_input_predicate_data(index: u64, expected: Vec<u8>) -> bool {
-        let mut vector = expected;
-        input_predicate_data(index) == Bytes::from_vec_u8(vector)
+        let actual = input_predicate_data::<Vec<u8>>(index);
+        let mut i = 0;
+        while i < actual.len() {
+            assert(actual.get(i).unwrap() == expected.get(i).unwrap());
+            i += 1;
+        };
+        true
     }
     fn get_input_predicate_data_length(index: u64) -> u16 {
         input_predicate_data_length(index).unwrap()
