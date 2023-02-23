@@ -2,15 +2,15 @@ use sway_ast::Intrinsic;
 use sway_core::{
     language::{
         parsed::{
-            Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter,
-            ReassignmentExpression, Scrutinee, StorageField, StructExpressionField, StructField,
-            Supertrait, TraitFn, TreeType,
+            ConstantDeclaration, Declaration, EnumVariant, Expression, FunctionDeclaration,
+            FunctionParameter, ReassignmentExpression, Scrutinee, StorageField,
+            StructExpressionField, StructField, Supertrait, TraitFn, TreeType, UseStatement,
         },
         ty,
     },
     transform::Attribute,
     type_system::{TypeId, TypeInfo, TypeParameter},
-    TypeArgument, TypeEngine,
+    TraitConstraint, TypeArgument, TypeEngine,
 };
 use sway_types::{Ident, Span, Spanned};
 use tower_lsp::lsp_types::{Position, Range};
@@ -29,6 +29,7 @@ pub enum AstToken {
     StructField(StructField),
     EnumVariant(EnumVariant),
     TraitFn(TraitFn),
+    ConstantDeclaration(ConstantDeclaration),
     Reassignment(ReassignmentExpression),
     StorageField(StorageField),
     Scrutinee(Scrutinee),
@@ -37,6 +38,7 @@ pub enum AstToken {
     Attribute(Attribute),
     TreeType(TreeType),
     IncludeStatement,
+    UseStatement(UseStatement),
 }
 
 /// The `TypedAstToken` holds the types produced by the [sway_core::language::ty::TyProgram].
@@ -44,6 +46,8 @@ pub enum AstToken {
 pub enum TypedAstToken {
     TypedDeclaration(ty::TyDeclaration),
     TypedExpression(ty::TyExpression),
+    TypedScrutinee(ty::TyScrutinee),
+    TypedConstantDeclaration(ty::TyConstantDeclaration),
     TypedFunctionDeclaration(ty::TyFunctionDeclaration),
     TypedFunctionParameter(ty::TyFunctionParameter),
     TypedStructField(ty::TyStructField),
@@ -55,9 +59,11 @@ pub enum TypedAstToken {
     TypedReassignment(ty::TyReassignment),
     TypedArgument(TypeArgument),
     TypedParameter(TypeParameter),
+    TypedTraitConstraint(TraitConstraint),
     TypedProgramKind(ty::TyProgramKind),
     TypedLibraryName(Ident),
     TypedIncludeStatement,
+    TypedUseStatement(ty::TyUseStatement),
 }
 
 /// These variants are used to represent the semantic type of the [Token].
@@ -153,10 +159,10 @@ pub fn to_ident_key(ident: &Ident) -> (Ident, Span) {
 /// Use the [TypeId] to look up the associated [TypeInfo] and return the [Ident] if one is found.
 pub fn ident_of_type_id(type_engine: &TypeEngine, type_id: &TypeId) -> Option<Ident> {
     match type_engine.get(*type_id) {
-        TypeInfo::UnknownGeneric { name, .. } | TypeInfo::Custom { name, .. } => Some(name),
-        TypeInfo::Enum { call_path, .. } | TypeInfo::Struct { call_path, .. } => {
-            Some(call_path.suffix)
-        }
+        TypeInfo::UnknownGeneric { name, .. } => Some(name),
+        TypeInfo::Enum { call_path, .. }
+        | TypeInfo::Struct { call_path, .. }
+        | TypeInfo::Custom { call_path, .. } => Some(call_path.suffix),
         _ => None,
     }
 }
@@ -169,7 +175,9 @@ pub fn type_info_to_symbol_kind(type_engine: &TypeEngine, type_info: &TypeInfo) 
             SymbolKind::BuiltinType
         }
         TypeInfo::Numeric | TypeInfo::Str(..) => SymbolKind::NumericLiteral,
-        TypeInfo::Custom { .. } | TypeInfo::Struct { .. } => SymbolKind::Struct,
+        TypeInfo::Custom { .. } | TypeInfo::Struct { .. } | TypeInfo::Contract => {
+            SymbolKind::Struct
+        }
         TypeInfo::Enum { .. } => SymbolKind::Enum,
         TypeInfo::Array(elem_ty, ..) => {
             let type_info = type_engine.get(elem_ty.type_id);

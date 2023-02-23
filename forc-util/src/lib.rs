@@ -9,6 +9,7 @@ use forc_tracing::{println_green_err, println_red_err, println_yellow_err};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::str;
+use sway_core::fuel_prelude::fuel_tx;
 use sway_core::language::parsed::TreeType;
 use sway_error::error::CompileError;
 use sway_error::warning::CompileWarning;
@@ -92,7 +93,7 @@ where
 
 pub fn is_sway_file(file: &Path) -> bool {
     let res = file.extension();
-    Some(OsStr::new(constants::SWAY_EXTENSION)) == res
+    file.is_file() && Some(OsStr::new(constants::SWAY_EXTENSION)) == res
 }
 
 pub fn find_file_name<'sc>(manifest_dir: &Path, entry_path: &'sc Path) -> Result<&'sc Path> {
