@@ -1,3 +1,4 @@
+//! The official standard library for the Sway smart contract language.
 library std;
 
 dep error_signals;
@@ -16,12 +17,12 @@ dep registers;
 dep call_frames;
 dep context;
 dep hash;
-dep r#storage;
 dep b512;
 dep address;
 dep identity;
 dep vec;
 dep bytes;
+dep r#storage;
 dep b256;
 dep tx;
 dep inputs;
