@@ -1,8 +1,8 @@
 use fuels::{
     prelude::*,
-    programs::execution_script::ExecutableFuelCall,
     tx::{ConsensusParameters, Transaction},
 };
+use fuels_types::transaction::ScriptTransaction;
 use hex;
 
 #[tokio::test]
