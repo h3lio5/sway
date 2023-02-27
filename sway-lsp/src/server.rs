@@ -77,6 +77,8 @@ impl Backend {
                 }
             }
         };
+        let s = std::mem::size_of::<session.type_engine>();
+        eprintln!("decl_engine size: {:#?}", size)
         self.publish_diagnostics(&uri, &workspace_uri, session, diagnostics)
             .await;
     }

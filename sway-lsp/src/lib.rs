@@ -11,6 +11,9 @@ mod traverse;
 pub mod utils;
 use server::Backend;
 
+#[global_allocator]
+static ALLOC: dhat::Alloc = dhat::Alloc;
+
 pub async fn start() {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();

@@ -160,10 +160,19 @@ async fn did_close() {
 
 #[tokio::test]
 async fn did_change() {
+    let _profiler = dhat::Profiler::builder().testing().build();
     let (mut service, _) = LspService::new(Backend::new);
+    let stats = dhat::HeapStats::get();
+    eprintln!("166 stats: {:#?}", stats);
     let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
+    let stats = dhat::HeapStats::get();
+    eprintln!("169 stats: {:#?}", stats);
     let _ = lsp::did_change_request(&mut service, &uri).await;
+    let stats = dhat::HeapStats::get();
+    eprintln!("172 stats: {:#?}", stats);
     shutdown_and_exit(&mut service).await;
+    let stats = dhat::HeapStats::get();
+    eprintln!("175 stats: {:#?}", stats);
 }
 
 #[tokio::test]
