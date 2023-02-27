@@ -1,3 +1,5 @@
+use serde::Serialize;
+
 use {
     lazy_static::lazy_static,
     std::{borrow::Cow, cmp, fmt, path::PathBuf, sync::Arc},
@@ -64,15 +66,17 @@ impl Position {
 }
 
 /// Represents a span of the source code in a specific file.
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize)]
 pub struct Span {
     // The original source code.
+    #[serde(skip_serializing)]
     src: Arc<str>,
     // The byte position in the string of the start of the span.
     start: usize,
     // The byte position in the string of the end of the span.
     end: usize,
     // A reference counted pointer to the file from which this span originated.
+    #[serde(skip_serializing)]
     path: Option<Arc<PathBuf>>,
 }
 

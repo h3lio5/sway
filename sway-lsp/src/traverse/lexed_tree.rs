@@ -5,10 +5,9 @@ use crate::{
     },
     traverse::Parse,
 };
-use std::ops::ControlFlow;
 use sway_ast::{
-    ty::TyTupleDescriptor, Assignable, CodeBlockContents, ConfigurableField, Expr,
-    ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, FnArg, FnArgs, FnSignature,
+    expr::IfControlFlow, ty::TyTupleDescriptor, Assignable, CodeBlockContents, ConfigurableField,
+    Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, FnArg, FnArgs, FnSignature,
     IfCondition, IfExpr, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl,
     ItemImplItem, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse, MatchBranchKind, Pattern,
     PatternStructField, Statement, StatementLet, StorageField, Ty, TypeField, UseTree,
@@ -559,10 +558,10 @@ impl Parse for IfExpr {
         if let Some((else_token, control_flow)) = &self.else_opt {
             insert_keyword(tokens, else_token.span());
             match control_flow {
-                ControlFlow::Break(block) => {
+                IfControlFlow::Break(block) => {
                     block.get().parse(tokens);
                 }
-                ControlFlow::Continue(if_expr) => {
+                IfControlFlow::Continue(if_expr) => {
                     if_expr.parse(tokens);
                 }
             }

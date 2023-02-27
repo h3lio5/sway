@@ -1,3 +1,5 @@
+use serde::Serialize;
+
 use crate::{span::Span, Spanned};
 
 use std::{
@@ -6,7 +8,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct BaseIdent {
     name_override_opt: Option<&'static str>,
     span: Span,
