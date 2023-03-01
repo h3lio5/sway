@@ -1732,15 +1732,18 @@ pub fn compile(
             let mut types = vec![];
             ProgramABI::Fuel(time_expr!(
                 "generate JSON ABI program",
+<<<<<<< HEAD
                 fuel_json_abi::generate_json_abi_program(
                     &mut JsonAbiContext {
                         program: typed_program,
                         json_abi_with_callpaths: profile.json_abi_with_callpaths,
                     },
                     engines.te(),
-                    engines.de(),
                     &mut types
                 )
+=======
+                fuel_json_abi::generate_json_abi_program(typed_program, &engines, &mut types)
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
             ))
         }
         BuildTarget::EVM => {

@@ -548,7 +548,11 @@ impl TyDeclaration {
                     "{} for {}",
                     self.get_decl_ident()
                         .map_or(String::from(""), |f| f.as_str().to_string()),
+<<<<<<< HEAD
                     engines.help_out(implementing_for_type_id)
+=======
+                    implementing_for_type_id.json_abi_str(type_engine, decl_engine)
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
                 )
             }
             _ => self

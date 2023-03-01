@@ -2,13 +2,17 @@ use fuel_abi_types::program_abi;
 use sway_types::integer_bits::IntegerBits;
 
 use crate::{
-    decl_engine::DeclEngine,
+<<<<<<< HEAD
     language::{
         ty::{TyConstantDeclaration, TyFunctionDeclaration, TyProgram, TyProgramKind},
         CallPath,
     },
+=======
+    decl_engine::DeclEngine,
+    language::ty::{TyConstantDeclaration, TyFunctionDeclaration, TyProgram, TyProgramKind},
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
     transform::AttributesMap,
-    TypeArgument, TypeEngine, TypeId, TypeInfo, TypeParameter,
+    Engines, TypeArgument, TypeEngine, TypeId, TypeInfo, TypeParameter,
 };
 
 pub struct JsonAbiContext<'a> {
@@ -17,20 +21,40 @@ pub struct JsonAbiContext<'a> {
 }
 
 pub fn generate_json_abi_program(
+<<<<<<< HEAD
     ctx: &mut JsonAbiContext,
     type_engine: &TypeEngine,
-    decl_engine: &DeclEngine,
     types: &mut Vec<program_abi::TypeDeclaration>,
 ) -> program_abi::ProgramABI {
     match &ctx.program.kind {
         TyProgramKind::Contract { abi_entries, .. } => {
             let functions = abi_entries
                 .iter()
-                .map(|x| x.generate_json_abi_function(ctx, type_engine, decl_engine, types))
+                .map(|x| x.generate_json_abi_function(ctx, type_engine, types))
                 .collect();
-            let logged_types = generate_json_logged_types(ctx, type_engine, decl_engine, types);
-            let messages_types = generate_json_messages_types(ctx, type_engine, decl_engine, types);
-            let configurables = generate_json_configurables(ctx, type_engine, decl_engine, types);
+            let logged_types = generate_json_logged_types(ctx, type_engine, types);
+            let messages_types = generate_json_messages_types(ctx, type_engine, types);
+            let configurables = generate_json_configurables(ctx, type_engine, types);
+=======
+    program: &TyProgram,
+    engines: &Engines<'_>,
+    types: &mut Vec<program_abi::TypeDeclaration>,
+) -> program_abi::ProgramABI {
+    let type_engine = engines.te();
+    let decl_engine = engines.de();
+
+    match &program.kind {
+        TyProgramKind::Contract { abi_entries, .. } => {
+            let functions = abi_entries
+                .iter()
+                .map(|x| x.generate_json_abi_function(type_engine, decl_engine, types))
+                .collect();
+            let logged_types = generate_json_logged_types(program, type_engine, decl_engine, types);
+            let messages_types =
+                generate_json_messages_types(program, type_engine, decl_engine, types);
+            let configurables =
+                generate_json_configurables(program, type_engine, decl_engine, types);
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
             program_abi::ProgramABI {
                 types: types.to_vec(),
                 functions,
@@ -41,15 +65,20 @@ pub fn generate_json_abi_program(
         }
         TyProgramKind::Script { main_function, .. }
         | TyProgramKind::Predicate { main_function, .. } => {
-            let functions = vec![main_function.generate_json_abi_function(
-                ctx,
-                type_engine,
-                decl_engine,
-                types,
-            )];
-            let logged_types = generate_json_logged_types(ctx, type_engine, decl_engine, types);
-            let messages_types = generate_json_messages_types(ctx, type_engine, decl_engine, types);
-            let configurables = generate_json_configurables(ctx, type_engine, decl_engine, types);
+<<<<<<< HEAD
+            let functions = vec![main_function.generate_json_abi_function(ctx, type_engine, types)];
+            let logged_types = generate_json_logged_types(ctx, type_engine, types);
+            let messages_types = generate_json_messages_types(ctx, type_engine, types);
+            let configurables = generate_json_configurables(ctx, type_engine, types);
+=======
+            let functions =
+                vec![main_function.generate_json_abi_function(type_engine, decl_engine, types)];
+            let logged_types = generate_json_logged_types(program, type_engine, decl_engine, types);
+            let messages_types =
+                generate_json_messages_types(program, type_engine, decl_engine, types);
+            let configurables =
+                generate_json_configurables(program, type_engine, decl_engine, types);
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
             program_abi::ProgramABI {
                 types: types.to_vec(),
                 functions,
@@ -81,21 +110,20 @@ fn generate_json_logged_types(
         .iter()
         .map(|(_, type_id)| program_abi::TypeDeclaration {
             type_id: type_id.index(),
-            type_field: type_id.get_json_type_str(ctx, type_engine, decl_engine, *type_id),
-            components: type_id.get_json_type_components(
-                ctx,
-                type_engine,
-                decl_engine,
-                types,
-                *type_id,
-            ),
+<<<<<<< HEAD
+            type_field: type_id.get_json_type_str(ctx, type_engine, *type_id),
+            components: type_id.get_json_type_components(ctx, type_engine, types, *type_id),
+            type_parameters: type_id.get_json_type_parameters(ctx, type_engine, types, *type_id),
+=======
+            type_field: type_id.get_json_type_str(type_engine, decl_engine, *type_id),
+            components: type_id.get_json_type_components(type_engine, decl_engine, types, *type_id),
             type_parameters: type_id.get_json_type_parameters(
-                ctx,
                 type_engine,
                 decl_engine,
                 types,
                 *type_id,
             ),
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
         })
         .collect::<Vec<_>>();
 
@@ -111,13 +139,16 @@ fn generate_json_logged_types(
             application: program_abi::TypeApplication {
                 name: "".to_string(),
                 type_id: type_id.index(),
+<<<<<<< HEAD
+                type_arguments: type_id.get_json_type_arguments(ctx, type_engine, types, *type_id),
+=======
                 type_arguments: type_id.get_json_type_arguments(
-                    ctx,
                     type_engine,
                     decl_engine,
                     types,
                     *type_id,
                 ),
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
             },
         })
         .collect()
@@ -136,21 +167,20 @@ fn generate_json_messages_types(
         .iter()
         .map(|(_, type_id)| program_abi::TypeDeclaration {
             type_id: type_id.index(),
-            type_field: type_id.get_json_type_str(ctx, type_engine, decl_engine, *type_id),
-            components: type_id.get_json_type_components(
-                ctx,
-                type_engine,
-                decl_engine,
-                types,
-                *type_id,
-            ),
+<<<<<<< HEAD
+            type_field: type_id.get_json_type_str(ctx, type_engine, *type_id),
+            components: type_id.get_json_type_components(ctx, type_engine, types, *type_id),
+            type_parameters: type_id.get_json_type_parameters(ctx, type_engine, types, *type_id),
+=======
+            type_field: type_id.get_json_type_str(type_engine, decl_engine, *type_id),
+            components: type_id.get_json_type_components(type_engine, decl_engine, types, *type_id),
             type_parameters: type_id.get_json_type_parameters(
-                ctx,
                 type_engine,
                 decl_engine,
                 types,
                 *type_id,
             ),
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
         })
         .collect::<Vec<_>>();
 
@@ -166,13 +196,16 @@ fn generate_json_messages_types(
             application: program_abi::TypeApplication {
                 name: "".to_string(),
                 type_id: type_id.index(),
+<<<<<<< HEAD
+                type_arguments: type_id.get_json_type_arguments(ctx, type_engine, types, *type_id),
+=======
                 type_arguments: type_id.get_json_type_arguments(
-                    ctx,
                     type_engine,
                     decl_engine,
                     types,
                     *type_id,
                 ),
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
             },
         })
         .collect()
@@ -195,9 +228,13 @@ fn generate_json_configurables(
              }| program_abi::TypeDeclaration {
                 type_id: type_ascription.type_id.index(),
                 type_field: type_ascription.type_id.get_json_type_str(
+<<<<<<< HEAD
                     ctx,
                     type_engine,
+=======
+                    type_engine,
                     decl_engine,
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
                     type_ascription.type_id,
                 ),
                 components: type_ascription.type_id.get_json_type_components(
@@ -261,18 +298,41 @@ impl TypeId {
         if self.is_generic_parameter(type_engine, decl_engine, resolved_type_id) {
             format!(
                 "generic {}",
-                type_engine
-                    .get(*self)
-                    .json_abi_str(ctx, type_engine, decl_engine)
+<<<<<<< HEAD
+                type_engine.get(*self).json_abi_str(ctx, type_engine)
             )
         } else {
             match (type_engine.get(*self), type_engine.get(resolved_type_id)) {
                 (TypeInfo::Custom { .. }, TypeInfo::Struct { .. }) => type_engine
                     .get(resolved_type_id)
-                    .json_abi_str(ctx, type_engine, decl_engine),
+                    .json_abi_str(ctx, type_engine),
                 (TypeInfo::Custom { .. }, TypeInfo::Enum { .. }) => type_engine
                     .get(resolved_type_id)
-                    .json_abi_str(ctx, type_engine, decl_engine),
+                    .json_abi_str(ctx, type_engine),
+=======
+                type_engine
+                    .get(*self)
+                    .json_abi_str(type_engine, decl_engine)
+            )
+        } else {
+            match (type_engine.get(*self), type_engine.get(resolved_type_id)) {
+                (TypeInfo::Custom { .. }, TypeInfo::Struct { .. }) => {
+                    format!(
+                        "struct {}",
+                        type_engine
+                            .get(*self)
+                            .json_abi_str(type_engine, decl_engine)
+                    )
+                }
+                (TypeInfo::Custom { .. }, TypeInfo::Enum { .. }) => {
+                    format!(
+                        "enum {}",
+                        type_engine
+                            .get(*self)
+                            .json_abi_str(type_engine, decl_engine)
+                    )
+                }
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
                 (TypeInfo::Tuple(fields), TypeInfo::Tuple(resolved_fields)) => {
                     assert_eq!(fields.len(), resolved_fields.len());
                     let field_strs = fields
@@ -288,14 +348,21 @@ impl TypeId {
                 (TypeInfo::Custom { .. }, _) => {
                     format!(
                         "generic {}",
+<<<<<<< HEAD
+                        type_engine.get(*self).json_abi_str(ctx, type_engine)
+                    )
+                }
+                _ => type_engine.get(*self).json_abi_str(ctx, type_engine),
+=======
                         type_engine
                             .get(*self)
-                            .json_abi_str(ctx, type_engine, decl_engine)
+                            .json_abi_str(type_engine, decl_engine)
                     )
                 }
                 _ => type_engine
                     .get(*self)
-                    .json_abi_str(ctx, type_engine, decl_engine),
+                    .json_abi_str(type_engine, decl_engine),
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
             }
         }
     }
@@ -315,13 +382,21 @@ impl TypeId {
     ) -> Option<Vec<usize>> {
         match self.is_generic_parameter(type_engine, decl_engine, resolved_type_id) {
             true => None,
+<<<<<<< HEAD
+            false => resolved_type_id.get_type_parameters(type_engine).map(|v| {
+                v.iter()
+                    .map(|v| v.get_json_type_parameter(ctx, type_engine, types))
+                    .collect::<Vec<_>>()
+            }),
+=======
             false => resolved_type_id
                 .get_type_parameters(type_engine, decl_engine)
                 .map(|v| {
                     v.iter()
-                        .map(|v| v.get_json_type_parameter(ctx, type_engine, decl_engine, types))
+                        .map(|v| v.get_json_type_parameter(type_engine, decl_engine, types))
                         .collect::<Vec<_>>()
                 }),
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
         }
     }
     /// Return the components of a given (potentially generic) type while considering what it
@@ -346,9 +421,13 @@ impl TypeId {
                     .map(|x| program_abi::TypeDeclaration {
                         type_id: x.type_argument.initial_type_id.index(),
                         type_field: x.type_argument.initial_type_id.get_json_type_str(
+<<<<<<< HEAD
                             ctx,
                             type_engine,
+=======
+                            type_engine,
                             decl_engine,
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
                             x.type_argument.type_id,
                         ),
                         components: x.type_argument.initial_type_id.get_json_type_components(
@@ -401,9 +480,13 @@ impl TypeId {
                     .map(|x| program_abi::TypeDeclaration {
                         type_id: x.type_argument.initial_type_id.index(),
                         type_field: x.type_argument.initial_type_id.get_json_type_str(
+<<<<<<< HEAD
                             ctx,
                             type_engine,
+=======
+                            type_engine,
                             decl_engine,
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
                             x.type_argument.type_id,
                         ),
                         components: x.type_argument.initial_type_id.get_json_type_components(
@@ -452,9 +535,13 @@ impl TypeId {
                     let elem_json_ty = program_abi::TypeDeclaration {
                         type_id: elem_ty.initial_type_id.index(),
                         type_field: elem_ty.initial_type_id.get_json_type_str(
+<<<<<<< HEAD
                             ctx,
                             type_engine,
+=======
+                            type_engine,
                             decl_engine,
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
                             elem_ty.type_id,
                         ),
                         components: elem_ty.initial_type_id.get_json_type_components(
@@ -499,9 +586,13 @@ impl TypeId {
                         .map(|x| program_abi::TypeDeclaration {
                             type_id: x.initial_type_id.index(),
                             type_field: x.initial_type_id.get_json_type_str(
+<<<<<<< HEAD
                                 ctx,
                                 type_engine,
+=======
+                                type_engine,
                                 decl_engine,
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
                                 x.type_id,
                             ),
                             components: x.initial_type_id.get_json_type_components(
@@ -559,9 +650,13 @@ impl TypeId {
                         .map(|(v, p)| program_abi::TypeDeclaration {
                             type_id: v.initial_type_id.index(),
                             type_field: v.initial_type_id.get_json_type_str(
+<<<<<<< HEAD
                                 ctx,
                                 type_engine,
+=======
+                                type_engine,
                                 decl_engine,
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
                                 p.type_id,
                             ),
                             components: v.initial_type_id.get_json_type_components(
@@ -583,9 +678,13 @@ impl TypeId {
                     types.extend(type_args);
 
                     resolved_type_id.get_json_type_components(
+<<<<<<< HEAD
                         ctx,
                         type_engine,
+=======
+                        type_engine,
                         decl_engine,
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
                         types,
                         resolved_type_id,
                     )
@@ -622,9 +721,13 @@ impl TypeId {
                     .map(|(v, p)| program_abi::TypeDeclaration {
                         type_id: v.initial_type_id.index(),
                         type_field: v.initial_type_id.get_json_type_str(
+<<<<<<< HEAD
                             ctx,
                             type_engine,
+=======
+                            type_engine,
                             decl_engine,
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
                             p.type_id,
                         ),
                         components: v.initial_type_id.get_json_type_components(
@@ -668,12 +771,15 @@ impl TypeId {
                     .iter()
                     .map(|v| program_abi::TypeDeclaration {
                         type_id: v.type_id.index(),
+<<<<<<< HEAD
+                        type_field: v.type_id.get_json_type_str(ctx, type_engine, v.type_id),
+=======
                         type_field: v.type_id.get_json_type_str(
-                            ctx,
                             type_engine,
                             decl_engine,
                             v.type_id,
                         ),
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
                         components: v.type_id.get_json_type_components(
                             ctx,
                             type_engine,
@@ -719,20 +825,17 @@ impl TypeId {
                     .map(|v| program_abi::TypeDeclaration {
                         type_id: v.type_id.index(),
                         type_field: v.type_id.get_json_type_str(
-                            ctx,
                             type_engine,
                             decl_engine,
                             v.type_id,
                         ),
                         components: v.type_id.get_json_type_components(
-                            ctx,
                             type_engine,
                             decl_engine,
                             types,
                             v.type_id,
                         ),
                         type_parameters: v.type_id.get_json_type_parameters(
-                            ctx,
                             type_engine,
                             decl_engine,
                             types,
@@ -749,7 +852,6 @@ impl TypeId {
                             name: "".to_string(),
                             type_id: arg.type_id.index(),
                             type_arguments: arg.type_id.get_json_type_arguments(
-                                ctx,
                                 type_engine,
                                 decl_engine,
                                 types,
@@ -765,12 +867,11 @@ impl TypeId {
 }
 
 impl TypeInfo {
-    pub fn json_abi_str(
-        &self,
-        ctx: &mut JsonAbiContext,
-        type_engine: &TypeEngine,
-        decl_engine: &DeclEngine,
-    ) -> String {
+<<<<<<< HEAD
+    pub fn json_abi_str(&self, ctx: &mut JsonAbiContext, type_engine: &TypeEngine) -> String {
+=======
+    pub fn json_abi_str(&self, type_engine: &TypeEngine, decl_engine: &DeclEngine) -> String {
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
         use TypeInfo::*;
         match self {
             Unknown => "unknown".into(),
@@ -789,7 +890,11 @@ impl TypeInfo {
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
-                    .map(|field| field.json_abi_str(ctx, type_engine, decl_engine))
+<<<<<<< HEAD
+                    .map(|field| field.json_abi_str(ctx, type_engine))
+=======
+                    .map(|field| field.json_abi_str(type_engine, decl_engine))
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
                     .collect::<Vec<String>>();
                 format!("({})", field_strs.join(", "))
             }
@@ -798,13 +903,21 @@ impl TypeInfo {
             Numeric => "u64".into(), // u64 is the default
             Contract => "contract".into(),
             ErrorRecovery => "unknown due to error".into(),
+<<<<<<< HEAD
+            Enum { call_path, .. } => {
+                format!("enum {}", call_path_display(ctx, call_path))
+            }
+            Struct { call_path, .. } => {
+                format!("struct {}", call_path_display(ctx, call_path))
+=======
             Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(decl_ref);
-                format!("enum {}", call_path_display(ctx, &decl.call_path))
+                format!("enum {}", decl.call_path.suffix)
             }
             Struct(decl_ref) => {
                 let decl = decl_engine.get_struct(decl_ref);
-                format!("struct {}", call_path_display(ctx, &decl.call_path))
+                format!("struct {}", decl.call_path.suffix)
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
             }
             ContractCaller { abi_name, .. } => {
                 format!("contract caller {abi_name}")
@@ -812,7 +925,11 @@ impl TypeInfo {
             Array(elem_ty, length) => {
                 format!(
                     "[{}; {}]",
-                    elem_ty.json_abi_str(ctx, type_engine, decl_engine),
+<<<<<<< HEAD
+                    elem_ty.json_abi_str(ctx, type_engine),
+=======
+                    elem_ty.json_abi_str(type_engine, decl_engine),
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
                     length.val()
                 )
             }
@@ -864,9 +981,13 @@ impl TyFunctionDeclaration {
             .map(|x| program_abi::TypeDeclaration {
                 type_id: x.type_argument.initial_type_id.index(),
                 type_field: x.type_argument.initial_type_id.get_json_type_str(
+<<<<<<< HEAD
                     ctx,
                     type_engine,
+=======
+                    type_engine,
                     decl_engine,
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
                     x.type_argument.type_id,
                 ),
                 components: x.type_argument.initial_type_id.get_json_type_components(
@@ -890,9 +1011,13 @@ impl TyFunctionDeclaration {
         let output_type = program_abi::TypeDeclaration {
             type_id: self.return_type.initial_type_id.index(),
             type_field: self.return_type.initial_type_id.get_json_type_str(
+<<<<<<< HEAD
                 ctx,
                 type_engine,
+=======
+                type_engine,
                 decl_engine,
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
                 self.return_type.type_id,
             ),
             components: self.return_type.type_id.get_json_type_components(
@@ -981,12 +1106,17 @@ impl TypeParameter {
     ) -> usize {
         let type_parameter = program_abi::TypeDeclaration {
             type_id: self.initial_type_id.index(),
+<<<<<<< HEAD
+            type_field: self
+                .initial_type_id
+                .get_json_type_str(ctx, type_engine, self.type_id),
+=======
             type_field: self.initial_type_id.get_json_type_str(
-                ctx,
                 type_engine,
                 decl_engine,
                 self.type_id,
             ),
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
             components: self.initial_type_id.get_json_type_components(
                 ctx,
                 type_engine,
@@ -1002,14 +1132,14 @@ impl TypeParameter {
 }
 
 impl TypeArgument {
-    pub(self) fn json_abi_str(
-        &self,
-        ctx: &mut JsonAbiContext,
-        type_engine: &TypeEngine,
-        decl_engine: &DeclEngine,
-    ) -> String {
+<<<<<<< HEAD
+    pub(self) fn json_abi_str(&self, ctx: &mut JsonAbiContext, type_engine: &TypeEngine) -> String {
+        type_engine.get(self.type_id).json_abi_str(ctx, type_engine)
+=======
+    pub(self) fn json_abi_str(&self, type_engine: &TypeEngine, decl_engine: &DeclEngine) -> String {
         type_engine
             .get(self.type_id)
-            .json_abi_str(ctx, type_engine, decl_engine)
+            .json_abi_str(type_engine, decl_engine)
+>>>>>>> 654ee8f7a (Use `DeclRef` for struct and enum TypeInfo)
     }
 }
